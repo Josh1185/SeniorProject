@@ -3,6 +3,18 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["server", "client"],
-  "engines": { "node": ">=22" }
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
 }
