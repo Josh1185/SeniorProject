@@ -1,12 +1,12 @@
 /**
  * FILE: health.ts
  * DESCRIPTION: The router for server health endpoints
- * 
+ *
  * LAST UPDATED: 2026-09-08 - File Created (Josh Iehle)
  */
 
 // -------------------- Module Imports --------------------
-import { Router } from "express";
+import { Router } from 'express';
 
 // -------------------- Router Instance --------------------
 export const healthRouter = Router();

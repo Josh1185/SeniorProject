@@ -1,12 +1,12 @@
 /**
  * FILE: env.ts
  * DESCRIPTION: Environment variable schema
- * 
+ *
  * LAST UPDATED: 2026-09-08 - File Created (Josh Iehle)
  */
 
 // -------------------- Module Imports --------------------
-import { z } from "zod";
+import { z } from 'zod';
 
 // -------------------- env Schema --------------------
 /**

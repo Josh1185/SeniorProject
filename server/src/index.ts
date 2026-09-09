@@ -1,8 +1,8 @@
 /**
  * FILE: index.ts
- * DESCRIPTION: The server entry point. 
+ * DESCRIPTION: The server entry point.
  *              Its only job is to start listening on the specified port and to stop cleanly.
- * 
+ *
  * LAST UPDATED: 2026-09-08 - File Created (Josh Iehle)
  */
 
@@ -17,7 +17,7 @@ const server = createApp().listen(env.PORT, () => {
 
 // -------------------- Shutdown Handler --------------------
 /**
- * Used for graceful shutdown. 
+ * Used for graceful shutdown.
  * Calling 'server.close()' stops accepting new connections and waits for in-flight ones to finish
  */
 function shutdown(signal: string) {
@@ -29,7 +29,7 @@ function shutdown(signal: string) {
 }
 
 // -------------------- Shutdown Cases --------------------
-/** 
+/**
  * SIGINT is stopping the server with Ctrl-C in the command line
  * SIGTERM is what deployment platforms send before stopping your server container
  */

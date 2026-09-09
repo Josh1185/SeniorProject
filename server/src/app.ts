@@ -2,13 +2,13 @@
  * FILE: app.ts
  * DESCRIPTION: Builds and returns the Express app without starting a server
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
- * 
+ *
  * LAST UPDATED: 2026-09-08 - File Created (Josh Iehle)
  */
 
 // -------------------- Module Imports --------------------
 import cors from 'cors';
-import express from "express";
+import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
@@ -53,7 +53,7 @@ export function createApp() {
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: "Route not found" } });
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
 
   // -------------------- 500 Interal Error Route Handler --------------------
@@ -63,13 +63,13 @@ export function createApp() {
       res.status(500).json({
         error: {
           code: 'INTERNAL_ERROR',
-          message: 
+          message:
             env.NODE_ENV === 'production'
               ? 'Something went wrong'
               : err instanceof Error
                 ? err.message
                 : String(err),
-        }
+        },
       });
     },
   );
