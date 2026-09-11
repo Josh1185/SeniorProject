@@ -14,6 +14,12 @@ build/
 # generated Prisma client (each person regenerates locally)
 server/src/generated/
 
+# AI agent skills (installed by prisma init)
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
+
 # editor
 .vscode/*
 !.vscode/extensions.json
