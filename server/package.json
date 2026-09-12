@@ -1,5 +1,5 @@
 {
-  "name": "@trip-planner/server",
+  "name": "@trip-squad/server",
   "version": "0.1.0",
   "private": true,
   "scripts": {
