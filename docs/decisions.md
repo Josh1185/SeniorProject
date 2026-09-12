@@ -1,0 +1,1 @@
+TypeScript pinned to ~6.0.3 across both workspaces, because typescript-eslint's peer range excludes TS 7, and mismatched versions across workspaces defeat npm's hoisting. Revisit after TS 7.1 ships.
