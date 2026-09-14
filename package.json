@@ -27,5 +27,8 @@
   "devDependencies": {
     "npm-run-all2": "^8.0.4",
     "prettier": "^3.9.6"
+  },
+  "overrides": {
+    "typescript": "~6.0.3"
   }
 }
