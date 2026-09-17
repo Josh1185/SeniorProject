@@ -8,6 +8,18 @@ branch and a pull request. `main` should always be code that runs.
 I do have a ruleset in GitHub that will block any pushes directly to `main`,
 and it forces you to open a pull request in a separate branch.
 
+## Table of Contents
+
+- [The Daily Loop](#the-daily-loop)
+- [Branch Names](#branch-names)
+- [Commit Messages](#commit-messages)
+- [Pull Requests](#pull-requests)
+- [Coordination Rules](#coordination-rules)
+- [Merge Conflicts](#merge-conflicts)
+- [Escape Hatches](#escape-hatches)
+- [Branch Protection](#branch-protection)
+- [Dividing Work](#dividing-work)
+
 ---
 
 ## The daily loop
