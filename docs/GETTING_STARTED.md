@@ -7,6 +7,17 @@ If something breaks, check [Troubleshooting](#troubleshooting) at the bottom
 before asking. If the answer isn't there and you work it out, **add it**. That
 section is the team's memory.
 
+## Table of Contents
+
+- [1. Install the Prerequisites](#1-install-the-prerequisites)
+- [2. Clone and Open](#2-clone-and-open)
+- [3. Install Dependencies](#3-install-dependencies)
+- [4. Get the Environment Files](#4-get-the-environment-files)
+- [5. Generate the Prisma Client](#5-generate-the-prisma-client)
+- [6. Run It](#6-run-it)
+- [7. Command Reference](#7-command-reference)
+- [Troubleshooting](#troubleshooting)
+
 ---
 
 ## 1. Install the prerequisites
