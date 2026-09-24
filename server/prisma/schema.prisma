@@ -12,3 +12,28 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// -------------------- Tables --------------------
+
+// Users Table
+//   - Mirror of the Supabase Auth user
+//   - Supabase owns identity: password, OAuth, email confirmation, token refreshes.
+//     However, it does not own anything trip-related.
+//     We keep this thin copy so that every other table can hold a real foreign key to a user,
+//     and so our Prisma queries can `include` user details without another trip to Supabase
+//
+//   - NOTE: `id` is NOT generated here, but it is the `sub` claim from the Supabase JWT;
+//           this way both systems associate the same id with the same user
+model User {
+  id          String   @id @db.Uuid
+  email       String   @unique
+  displayName String   @map("display_name")
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Trip, TripMember, Expense, etc get added here once we have agreed on an ERD
+
+  @@map("users")
+  @@index([email])
+}
