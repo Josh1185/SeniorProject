@@ -1,0 +1,34 @@
+# Local development database. Each developer runs their own copy.
+#
+#   docker compose up -d     start it (first run downloads the image)
+#   docker compose down      stop it, keep the data
+#   docker compose down -v   stop it and DELETE all data
+#
+# Supabase hosts staging/production. This is only for local work, which is why
+# the credentials are deliberately boring; nothing sensitive lives here.
+
+services:
+  db:
+    image: postgres:17
+    container_name: trip-squad-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trip_squad
+    ports:
+      # host:container. If 5432 is taken by a native Postgres install, change
+      # the LEFT number (e.g. '5433:5432') and update DATABASE_URL to match.
+      - '5433:5432'
+    volumes:
+      - trip-squad-db-data:/var/lib/postgresql/data
+    healthcheck:
+      # Lets `docker compose up --wait` block until Postgres actually accepts
+      # connections, rather than just until the container starts.
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d trip_squad']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  trip-squad-db-data:

@@ -13,7 +13,7 @@ section is the team's memory.
 - [2. Clone and Open](#2-clone-and-open)
 - [3. Install Dependencies](#3-install-dependencies)
 - [4. Get the Environment Files](#4-get-the-environment-files)
-- [5. Generate the Prisma Client](#5-generate-the-prisma-client)
+- [5. Set up the database](#5-set-up-the-database)
 - [6. Run It](#6-run-it)
 - [7. Command Reference](#7-command-reference)
 - [Troubleshooting](#troubleshooting)
@@ -22,18 +22,21 @@ section is the team's memory.
 
 ## 1. Install the prerequisites
 
-| Tool    | Version         | Check with      |
-| ------- | --------------- | --------------- |
-| Node.js | 22 LTS or newer | `node -v`       |
-| npm     | 10 or newer     | `npm -v`        |
-| Git     | any recent      | `git --version` |
-| VS Code | any recent      |                 |
+| Tool           | Version         | Check with      |
+| -------------- | --------------- | --------------- |
+| Node.js        | 22 LTS or newer | `node -v`       |
+| npm            | 10 or newer     | `npm -v`        |
+| Git            | any recent      | `git --version` |
+| VS Code        | any recent      |                 |
+| Docker Desktop | any recent      | `docker -v`     |
 
 npm comes with Node. Download the LTS build from [nodejs.org](https://nodejs.org).
 
 **Everyone must be on Node 22+.** We use features older versions handle
 differently, and "works on my machine" is the most expensive kind of bug on a
 team project.
+
+Docker Desktop must be running before any `docker compose` command, not just installed.
 
 ---
 
@@ -121,18 +124,21 @@ tell the team immediately because every credential in it has to be rotated.
 Otherwise the next person to pull gets a mystery crash instead of a clear
 "you're missing this" error.
 
-### Why there are two connection strings
+### The two connection strings
 
-`server/.env` has both `DATABASE_URL` and `DIRECT_URL`, and they are not
-interchangeable:
+`server/.env` has both `DATABASE_URL` and `DIRECT_URL`. **Locally they're
+identical** - both point at your Docker Postgres:
 
-- **`DATABASE_URL`** (port 6543): the transaction pooler. The running app uses
-  this.
-- **`DIRECT_URL`** (port 5432): a direct connection. **Migrations** use this,
-  because the pooler doesn't support the prepared statements Prisma Migrate
-  needs.
-  Swap them and you'll get `prepared statement "s0" already exists`, which gives
-  you no hint about the real cause.
+```dotenv
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/trip_squad"
+DIRECT_URL="postgresql://postgres:postgres@localhost:5433/trip_squad"
+```
+
+They only differ in production, where the app uses a connection pooler and
+migrations need a direct connection. See [docs/DATABASE.md](./DATABASE.md).
+
+Note we use **port 5433**, not Postgres's default 5432, which is usually
+already taken by a native install.
 
 ### Why the client's variables start with VITE_
 
@@ -145,18 +151,41 @@ Never prefix a secret with `VITE_`. The naming is the safeguard.
 
 ---
 
-## 5. Generate the Prisma client
+## 5. Set up the database
+
+You run your own Postgres locally. Supabase handles auth; it is not your
+development database. Full detail in [docs/DATABASE.md](./DATABASE.md).
+
+Start it from the repo root (Docker Desktop must be running):
 
 ```bash
-npm run db:generate
+docker compose up -d
 ```
 
-This reads `server/prisma/schema.prisma` and writes typed database code into
-`server/src/generated/`. That folder is **gitignored**, so it won't exist after
-a fresh clone. You have to run this, and again any time the schema changes.
+First run downloads the Postgres image. Confirm it's healthy:
 
-It reads the schema only and never connects, so it works even before your
-credentials are right.
+```bash
+docker compose ps
+```
+
+Then create the tables and load sample data:
+
+```bash
+npm run db:generate   # builds the typed client from the schema
+npm run db:migrate    # creates the tables
+npm run db:seed       # inserts fixture users
+```
+
+Order matters: `db:generate` needs no database, but nothing else compiles
+without it.
+
+**Verify:**
+
+```bash
+npm run db:studio
+```
+
+A browser GUI opens. You should see a `users` table with four rows.
 
 ---
 
@@ -203,6 +232,10 @@ Run all of these from the repo root.
 | `npm run format`       | Prettier, formats changes                         |
 | `npm run format:check` | Prettier, fails instead of writing (CI uses this) |
 | `npm test`             | Vitest                                            |
+| `docker compose up -d` | Start the local database                          |
+| `docker compose down`  | Stop it, keep data                                |
+| `npm run db:seed`      | Load sample data                                  |
+| `npm run db:reset`     | Drop, re-migrate, re-seed (safe locally)          |
 | `npm run build`        | Production build of both                          |
 | `npm run db:generate`  | Regenerate the Prisma client                      |
 | `npm run db:migrate`   | Create and apply a migration                      |
@@ -231,6 +264,7 @@ fresh clone.
 Run these in order:
 
 ```bash
+docker compose up -d
 npm install          # someone added a dependency
 npm run db:generate  # someone changed the schema
 npm run db:migrate   # someone added a migration
