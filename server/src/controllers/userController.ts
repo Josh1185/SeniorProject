@@ -6,13 +6,13 @@
  */
 
 // -------------------- Type imports --------------------
-import type { Request, Response } from "express";
+import type { Request, Response } from 'express';
 
 // -------------------- Util imports --------------------
-import unauthorized from "../utils/unauthorized";
+import unauthorized from '../utils/unauthorized';
 
 // -------------------- Module Imports --------------------
-import { prisma } from "../lib/prisma";
+import { prisma } from '../lib/prisma';
 
 export async function getSignedInUserProfile(req: Request, res: Response) {
   // ----- 1. Check that the user is mounted to the request -----
@@ -30,7 +30,7 @@ export async function getSignedInUserProfile(req: Request, res: Response) {
       displayName: true,
       avatarUrl: true,
       createdAt: true,
-    }
+    },
   });
 
   // ----- 3. Return the user record or thrown error -----
