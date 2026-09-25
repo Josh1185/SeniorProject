@@ -3,7 +3,8 @@
  * DESCRIPTION: Builds and returns the Express app without starting a server
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
  *
- * LAST UPDATED: 2026-09-08 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-09-24 - Add user module routes (Josh Iehle)
+ *               2026-09-08 - File Created (Josh Iehle)
  */
 
 // -------------------- Module Imports --------------------
@@ -13,8 +14,12 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { env } from './env';
 
+// -------------------- Middleware imports --------------------
+import { requireAuth } from './middleware/auth';
+
 // -------------------- Router Imports --------------------
 import { healthRouter } from './routes/health';
+import { userRouter } from './routes/userRoutes';
 
 // -------------------- createApp Function --------------------
 export function createApp() {
@@ -48,6 +53,9 @@ export function createApp() {
 
   // Server health checks
   app.use('/api/health', healthRouter);
+
+  // Protected routes (requires auth)
+  app.use('/api/users', requireAuth, userRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
