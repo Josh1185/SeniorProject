@@ -11,8 +11,6 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
-
-// -------------------- Util Imports --------------------
 import { env } from './env';
 
 // -------------------- Router Imports --------------------
