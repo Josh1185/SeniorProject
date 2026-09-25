@@ -13,6 +13,9 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { env } from '../env';
 import { prisma } from '../lib/prisma';
 
+// -------------------- Util imports --------------------
+import unauthorized from '../utils/unauthorized';
+
 // -------------------- Supabase Handling --------------------
 
 /**
@@ -34,18 +37,6 @@ interface SupabaseClaims {
     name?: string;
     avatar_url?: string;
   };
-}
-
-// -------------------- Utils --------------------
-
-/** Reusable function for returning unauthorized 401 responses */
-function unauthorized(res: Response, message: string) {
-  return res.status(401).json({
-    error: {
-      code: 'UNAUTHORIZED',
-      message,
-    },
-  });
 }
 
 // -------------------- requireAuth Middleware --------------------
