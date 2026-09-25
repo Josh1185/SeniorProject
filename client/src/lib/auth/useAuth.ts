@@ -6,11 +6,11 @@
  */
 
 // -------------------- Type imports --------------------
-import type { AuthState } from "./authContext";
+import type { AuthState } from './authContext';
 
 // -------------------- Module imports --------------------
-import { AuthContext } from "./authContext";
-import { use } from "react";
+import { AuthContext } from './authContext';
+import { use } from 'react';
 
 // -------------------- Export useAuth hook --------------------
 export function useAuth(): AuthState {
