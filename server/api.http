@@ -1,0 +1,32 @@
+@supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
+@publishableKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
+@baseUrl = http://localhost:4000/api
+
+### 1. Create a test account
+POST {{supabaseUrl}}/auth/v1/signup
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "testpassword123"
+}
+
+### 2. Sign in and get a token
+# @name signin
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "testpassword123"
+}
+
+### 3. Call our protected route with that token
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{signin.response.body.access_token}}
+
+### 4. Same route with a garbage token - should 401
+GET {{baseUrl}}/users/ms
+Authorization: Bearer not-a-real-token
