@@ -1,0 +1,1 @@
+- For auth, re-enable email confirmation, add password reset, and consider Google OAuth (written 9/26/26, DO BEFORE PROD)
