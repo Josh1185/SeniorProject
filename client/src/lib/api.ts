@@ -6,7 +6,7 @@
  */
 
 // -------------------- Module and lib imports --------------------
-import { supabase } from "./supabase";
+import { supabase } from './supabase';
 
 // -------------------- API Base URL Resolution --------------------
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
@@ -56,13 +56,12 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
       ...rest,
       headers: {
         'Content-Type': 'application/json',
-        ...(session ? { Authorization: `Bearer ${session.access_token}`} : {}),
+        ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
         ...headers,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-  }
-  catch {
+  } catch {
     throw new ApiError(0, 'Could not reach the server. Is the API running?');
   }
 
