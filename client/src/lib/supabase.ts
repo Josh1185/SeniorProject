@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // -------------------- Obtain URL and Pub Key env vars --------------------
 const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_PUBLISHABLE_KEY;
+const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Validate both env vars exist
 if (!url || !key) {

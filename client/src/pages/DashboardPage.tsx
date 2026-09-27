@@ -33,7 +33,7 @@ export function DashboardPage() {
   // ----- 2. Obtain signed in user data -----
   const me = useQuery({
     queryKey: ['me'],
-    queryFn: () => get<SignedInUserResponse>('/me'),
+    queryFn: () => get<SignedInUserResponse>('/users/me'),
   });
 
   // ----- 3. Render -----
