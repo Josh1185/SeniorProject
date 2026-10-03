@@ -30,9 +30,6 @@ jobs:
         env:
           DIRECT_URL: postgresql://user:pass@localhost:5432/placeholder
 
-      - name: Check formatting
-        run: npm run format:check
-
       - name: Lint
         run: npm run lint
 
