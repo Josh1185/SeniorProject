@@ -1,23 +1,35 @@
-import { useEffect, useState } from 'react';
+/**
+ * FILE: App.tsx
+ * DESCRIPTION: Root component for the app
+ *
+ * LAST UPDATED: 2026-09-26 - Add routing (Josh Iehle)
+ */
 
+// -------------------- Module and lib imports --------------------
+import { Navigate, Route, Routes } from 'react-router';
+
+// -------------------- Component imports --------------------
+import { ProtectedRoute } from './components/ProtectedRoute';
+
+// -------------------- Page imports --------------------
+import { DashboardPage } from './pages/DashboardPage';
+import { LoginPage } from './pages/LoginPage';
+
+// -------------------- Component --------------------
 export function App() {
-  const [api, setApi] = useState<'checking' | 'ok' | 'unreachable'>('checking');
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((r) => (r.ok ? setApi('ok') : setApi('unreachable')))
-      .catch(() => setApi('unreachable'));
-  }, []);
-
   return (
-    <main className="grid h-full place-items-center bg-slate-50 p-8">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">Trip Squad</h1>
-        <p className="mt-1 text-sm text-slate-500">Scaffold is running.</p>
-        <p className="mt-6 text-sm">
-          API health: <span className="font-medium text-brand-600">{api}</span>
-        </p>
-      </div>
-    </main>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<p className="p-8">Page not found.</p>} />
+    </Routes>
   );
 }
