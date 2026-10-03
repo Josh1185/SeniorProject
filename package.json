@@ -19,9 +19,6 @@
     "format:check": "prettier --check .",
     "db:generate": "npm run db:generate --workspace=server",
     "db:migrate": "npm run db:migrate --workspace=server",
-    "db:deploy": "npm run db:deploy --workspace=server",
-    "db:reset": "npm run db:reset --workspace=server",
-    "db:seed": "npm run db:seed --workspace=server",
     "db:studio": "npm run db:studio --workspace=server"
   },
   "engines": {
