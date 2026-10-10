@@ -15,7 +15,6 @@ import type { TripRole } from '../generated/prisma/enums';
 declare global {
   namespace Express {
     interface Request {
-
       /**
        * Set by requireAuth. Present on any route mounted behind it.
        * Optional because Express types are global; TypeScript can't know
