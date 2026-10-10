@@ -3,7 +3,8 @@
  * DESCRIPTION: Builds and returns the Express app without starting a server
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
  *
- * LAST UPDATED: 2026-09-24 - Add user module routes (Josh Iehle)
+ * LAST UPDATED: 2026-10-10 - Add trip module routes (Josh Iehle)
+ *               2026-09-24 - Add user module routes (Josh Iehle)
  *               2026-09-08 - File Created (Josh Iehle)
  */
 
@@ -12,6 +13,7 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { ZodError, z } from 'zod';
 import { env } from './env';
 
 // -------------------- Middleware imports --------------------
@@ -20,6 +22,7 @@ import { requireAuth } from './middleware/auth';
 // -------------------- Router Imports --------------------
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
+import { tripRouter } from './routes/tripRoutes';
 
 // -------------------- createApp Function --------------------
 export function createApp() {
@@ -56,11 +59,32 @@ export function createApp() {
 
   // Protected routes (requires auth)
   app.use('/api/users', requireAuth, userRouter);
+  app.use('/api/trips', requireAuth, tripRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
+
+  // -------------------- 422 ZodError Route Handler (Validation Errors) --------------------
+  app.use(
+    (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      // Validation failures are the caller's fault, not ours. 422 with
+      // field-level detail so a form can highlight exactly what to fix.
+      if (err instanceof ZodError) {
+        return res.status(422).json({
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid request',
+            details: z.treeifyError(err),
+          },
+        });
+      }
+
+      console.error(err);
+      res.status(500).json({ /* ...unchanged... */ });
+    },
+  );
 
   // -------------------- 500 Interal Error Route Handler --------------------
   app.use(
