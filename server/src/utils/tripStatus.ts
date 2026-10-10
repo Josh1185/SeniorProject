@@ -7,7 +7,13 @@
  *              pass, and the row would be wrong in between runs. Deriving it on
  *              read is always correct and costs nothing.
  *
- * LAST UPDATED: 2026-10-09 - File Created (Josh Iehle)
+ *              The trade-off is that you cannot put `status` in a WHERE clause.
+ *              statusDateFilter() solves that by expressing each status as the
+ *              date comparison it actually means, so filtering still happens in
+ *              Postgres rather than in JavaScript after the fact.
+ *
+ * LAST UPDATED: 2026-10-10 - Add statusDateFilter for list filtering (Josh Iehle)
+ *               2026-10-09 - File Created (Josh Iehle)
  */
 
 // -------------------- Types --------------------
@@ -16,16 +22,16 @@ export type TripStatus = 'UPCOMING' | 'ACTIVE' | 'COMPLETED';
 // -------------------- Internal Helpers --------------------
 
 /**
- * Collapses a Date to the UTC calendar day it falls on, as a comparable number.
+ * Collapses a Date to midnight on the UTC calendar day it falls on.
  *
  * startDate and endDate are @db.Date columns, so Prisma hands them back at UTC
  * midnight. Comparing them against a raw `new Date()` would compare a midnight
  * timestamp against the current time of day, which makes a trip look COMPLETED
- * from 00:00 on its final day. Reducing both sides to a day number removes the
- * time component from the comparison entirely.
+ * from 00:00 on its final day. Reducing both sides to the start of their day
+ * removes the time component from the comparison entirely.
  */
-function utcDay(date: Date): number {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
 // -------------------- deriveTripStatus --------------------
@@ -43,10 +49,42 @@ export function deriveTripStatus(
   endDate: Date,
   now: Date = new Date(),
 ): TripStatus {
-  const today = utcDay(now);
+  const today = startOfUtcDay(now).getTime();
 
-  if (today < utcDay(startDate)) return 'UPCOMING';
-  if (today > utcDay(endDate)) return 'COMPLETED';
+  if (today < startOfUtcDay(startDate).getTime()) return 'UPCOMING';
+  if (today > startOfUtcDay(endDate).getTime()) return 'COMPLETED';
 
   return 'ACTIVE';
+}
+
+// -------------------- statusDateFilter --------------------
+
+/**
+ * The inverse of deriveTripStatus: the Prisma `where` fragment that selects
+ * exactly the trips deriveTripStatus would label with this status.
+ *
+ * Spread into a query's where clause:
+ *
+ *   where: { members: { some: { userId } }, ...statusDateFilter('ACTIVE') }
+ *
+ * These two functions MUST agree. tripStatus.test.ts proves they do, which
+ * matters because the alternative - fetching every trip and filtering in
+ * JavaScript - silently breaks the moment pagination is added.
+ */
+export function statusDateFilter(status: TripStatus, now: Date = new Date()) {
+  const today = startOfUtcDay(now);
+
+  switch (status) {
+    case 'UPCOMING':
+      // Starts strictly after today.
+      return { startDate: { gt: today } };
+
+    case 'ACTIVE':
+      // Started on or before today AND ends on or after today.
+      return { startDate: { lte: today }, endDate: { gte: today } };
+
+    case 'COMPLETED':
+      // Ended strictly before today.
+      return { endDate: { lt: today } };
+  }
 }
