@@ -1,0 +1,196 @@
+### =====================================================================
+### TRIPS
+###
+### Run these top to bottom the first time. Requests 1-2 get you a token,
+### 3-8 are the happy path, 9-13 are the permission checks.
+### =====================================================================
+
+@supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
+@publishableKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
+@baseUrl = http://localhost:4000/api
+
+### 1. Sign in as the primary test user
+# @name signin
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "testpassword123"
+}
+
+###
+@token = {{signin.response.body.access_token}}
+
+### 2. Create a second account, used for the permission checks below.
+### Only needs to succeed once; a duplicate signup error on later runs is fine.
+POST {{supabaseUrl}}/auth/v1/signup
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "outsider@example.com",
+  "password": "testpassword123"
+}
+
+### 3. Sign in as the outsider
+# @name outsiderSignin
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "outsider@example.com",
+  "password": "testpassword123"
+}
+
+###
+@outsiderToken = {{outsiderSignin.response.body.access_token}}
+
+
+### =====================================================================
+### HAPPY PATH
+### =====================================================================
+
+### 4. Create a trip
+### EXPECT 201. Copy the returned id into @tripId below.
+### Then check db:studio: trip_members must have an OWNER row for you.
+# @name createTrip
+POST {{baseUrl}}/trips
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Smoke Test Trip",
+  "description": "Created from trip.http",
+  "destination": "Orlando, FL",
+  "startDate": "2027-06-12",
+  "endDate": "2027-06-17"
+}
+
+###
+@tripId = {{createTrip.response.body.trip.id}}
+
+### 5. List my trips
+### EXPECT 200. The new trip appears with memberCount 1, yourRole OWNER,
+### status UPCOMING.
+GET {{baseUrl}}/trips
+Authorization: Bearer {{token}}
+
+### 6. Trip detail
+### EXPECT 200 with the full member roster and yourRole OWNER.
+GET {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
+
+### 7. Update the trip
+### EXPECT 200 with the new name.
+PATCH {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Smoke Test Trip (renamed)"
+}
+
+### 8. Update just the end date
+### EXPECT 200. Checks the merged-date rule: the schema cannot compare one
+### date on its own, so the controller re-checks against the stored start date.
+PATCH {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "endDate": "2027-06-20"
+}
+
+
+### =====================================================================
+### VALIDATION
+### =====================================================================
+
+### 9. End date before start date
+### EXPECT 422, with details pointing at endDate.
+POST {{baseUrl}}/trips
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Backwards Trip",
+  "destination": "Nowhere",
+  "startDate": "2027-06-17",
+  "endDate": "2027-06-12"
+}
+
+### 10. Empty name
+### EXPECT 422.
+POST {{baseUrl}}/trips
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "   ",
+  "destination": "Orlando, FL",
+  "startDate": "2027-06-12",
+  "endDate": "2027-06-17"
+}
+
+### 11. Empty PATCH body
+### EXPECT 422 - a no-op update is almost always a client bug.
+PATCH {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+
+### =====================================================================
+### PERMISSIONS
+### =====================================================================
+
+### 12. Non-member reads the trip
+### EXPECT 404, NOT 403. A 403 would confirm the trip exists and let someone
+### walk ids to discover real ones.
+GET {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{outsiderToken}}
+
+### 13. Non-member updates the trip
+### EXPECT 404.
+PATCH {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{outsiderToken}}
+Content-Type: application/json
+
+{
+  "name": "Hijacked"
+}
+
+### 14. Non-member lists trips
+### EXPECT 200 with an empty array - they have no trips, and they learn
+### nothing about anyone else's.
+GET {{baseUrl}}/trips
+Authorization: Bearer {{outsiderToken}}
+
+### 15. No token at all
+### EXPECT 401.
+GET {{baseUrl}}/trips
+
+### 16. Unknown trip id
+### EXPECT 404.
+GET {{baseUrl}}/trips/00000000-0000-7000-8000-ffffffffffff
+Authorization: Bearer {{token}}
+
+
+### =====================================================================
+### CLEANUP
+### =====================================================================
+
+### 17. Delete the smoke test trip
+### EXPECT 204 with an empty body. Check db:studio - the trip_members row
+### is gone too, via cascade.
+DELETE {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
+
+### 18. Confirm it is gone
+### EXPECT 404.
+GET {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{token}}
