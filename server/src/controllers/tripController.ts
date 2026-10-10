@@ -211,7 +211,7 @@ export async function createTrip(req: Request, res: Response) {
       startDate: true,
       endDate: true,
       createdAt: true,
-    }
+    },
   });
 
   // ----- 4. Respond with 201 and the created trip -----
@@ -219,7 +219,7 @@ export async function createTrip(req: Request, res: Response) {
     trip: {
       ...trip,
       status: deriveTripStatus(trip.startDate, trip.endDate),
-    }
+    },
   });
 }
 

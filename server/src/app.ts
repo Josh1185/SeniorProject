@@ -82,7 +82,7 @@ export function createApp() {
       }
 
       console.error(err);
-      res.status(500).json({ /* ...unchanged... */ });
+      res.status(500).json({/* ...unchanged... */});
     },
   );
 
