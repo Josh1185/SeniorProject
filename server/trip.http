@@ -179,18 +179,117 @@ GET {{baseUrl}}/trips
 GET {{baseUrl}}/trips/00000000-0000-7000-8000-ffffffffffff
 Authorization: Bearer {{token}}
 
+### =====================================================================
+### SEARCH, FILTER, SORT
+###
+### These read best against the seeded demo trip plus the smoke test trip,
+### so run `npm run db:seed` first and set DEV_USER_ID in prisma/seed.ts to
+### your own Supabase user id.
+### =====================================================================
+
+### 19. Search by name
+### EXPECT 200, only trips whose name or destination contains "orlando".
+GET {{baseUrl}}/trips?search=orlando
+Authorization: Bearer {{token}}
+
+### 20. Search is case-insensitive
+### EXPECT 200, the same results as #19.
+GET {{baseUrl}}/trips?search=ORLANDO
+Authorization: Bearer {{token}}
+
+### 21. Search matches destination, not just name
+### EXPECT 200, the Orlando trip - matched on destination "Orlando, FL".
+GET {{baseUrl}}/trips?search=FL
+Authorization: Bearer {{token}}
+
+### 22. Empty search returns everything
+### EXPECT 200, all your trips. `?search=` is what a cleared input sends, and
+### it must not be treated as a search for the empty string.
+GET {{baseUrl}}/trips?search=
+Authorization: Bearer {{token}}
+
+### 23. Filter by status
+### EXPECT 200, only trips whose start date is in the future. Every returned
+### trip must also have "status": "UPCOMING" in its body - that agreement
+### between the filter and the derived field is the thing to check.
+GET {{baseUrl}}/trips?status=UPCOMING
+Authorization: Bearer {{token}}
+
+### 24. Filter by role
+### EXPECT 200, only trips where you are the OWNER.
+GET {{baseUrl}}/trips?role=OWNER
+Authorization: Bearer {{token}}
+
+### 25. Sort by name, descending
+### EXPECT 200, reverse alphabetical.
+GET {{baseUrl}}/trips?sort=name&order=desc
+Authorization: Bearer {{token}}
+
+### 26. Everything at once
+### EXPECT 200. Filters compose with AND, so this is
+### (my trips) AND (owner) AND (upcoming) AND (name or destination matches).
+GET {{baseUrl}}/trips?search=trip&status=UPCOMING&role=OWNER&sort=startDate&order=asc
+Authorization: Bearer {{token}}
+
+### 27. Unknown sort field
+### EXPECT 422. The enum is what stops a caller ordering by an arbitrary column.
+GET {{baseUrl}}/trips?sort=description
+Authorization: Bearer {{token}}
+
+### 28. Unknown status
+### EXPECT 422.
+GET {{baseUrl}}/trips?status=CANCELLED
+Authorization: Bearer {{token}}
+
+
+### =====================================================================
+### MEMBER vs OWNER
+###
+### SETUP: you need a trip where you are a MEMBER rather than the OWNER.
+### Fastest way, no code needed:
+###   1. npm run db:studio
+###   2. open trip_members, find your row on the seeded Orlando trip
+###   3. change role from OWNER to MEMBER, save
+###   4. run #29 and #30
+###   5. change it back to OWNER
+###
+### Paste that trip's id here:
+### =====================================================================
+
+@memberTripId = 01a12cbc-5808-761e-ac70-2f9a0084a06a
+
+### 29. MEMBER tries to update
+### EXPECT 403 FORBIDDEN - not 404. They already know the trip exists because
+### they are in it, so hiding it would be pointless and confusing.
+PATCH {{baseUrl}}/trips/{{memberTripId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "A member should not be able to do this"
+}
+
+### 30. MEMBER tries to delete
+### EXPECT 403.
+DELETE {{baseUrl}}/trips/{{memberTripId}}
+Authorization: Bearer {{token}}
+
+### 31. MEMBER can still read
+### EXPECT 200 with "yourRole": "MEMBER".
+GET {{baseUrl}}/trips/{{memberTripId}}
+Authorization: Bearer {{token}}
 
 ### =====================================================================
 ### CLEANUP
 ### =====================================================================
 
-### 17. Delete the smoke test trip
+### 32. Delete the smoke test trip
 ### EXPECT 204 with an empty body. Check db:studio - the trip_members row
 ### is gone too, via cascade.
 DELETE {{baseUrl}}/trips/{{tripId}}
 Authorization: Bearer {{token}}
 
-### 18. Confirm it is gone
+### 33. Confirm it is gone
 ### EXPECT 404.
 GET {{baseUrl}}/trips/{{tripId}}
 Authorization: Bearer {{token}}

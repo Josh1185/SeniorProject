@@ -10,7 +10,8 @@
  *              Read this before writing activityController, reservationController,
  *              itineraryController or invitationController.
  *
- * LAST UPDATED: 2026-10-09 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-10-11 - Update listTrips to handle searching/filtering/sorting
+ *               2026-10-09 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
@@ -18,12 +19,19 @@ import type { Request, Response } from 'express';
 
 // -------------------- Module Imports --------------------
 import { prisma } from '../lib/prisma';
-import { createTripSchema, updateTripSchema } from '../schemas/tripSchemas';
+
+// -------------------- Schema imports --------------------
+import {
+  createTripSchema,
+  updateTripSchema,
+  listTripsQuerySchema,
+  type ListTripsQuery,
+} from '../schemas/tripSchemas';
 
 // -------------------- Util imports --------------------
 import badRequest from '../utils/badRequest';
 import unauthorized from '../utils/unauthorized';
-import { deriveTripStatus } from '../utils/tripStatus';
+import { deriveTripStatus, statusDateFilter } from '../utils/tripStatus';
 
 // -------------------- Internal Helpers --------------------
 
@@ -38,13 +46,40 @@ function toDateOnly(isoDate: string): Date {
   return new Date(isoDate);
 }
 
+/**
+ * Builds the Prisma `orderBy` for a validated sort option.
+ *
+ * A computed key - `{ [query.sort]: query.order }` - would widen to
+ * Record<string, ...> and stop type-checking against the model's real fields,
+ * so a typo would compile and fail at runtime. A switch keeps each branch
+ * literal and exhaustive: add a value to the sort enum without handling it
+ * here and TypeScript flags the missing case.
+ */
+function buildTripOrderBy(sort: ListTripsQuery['sort'], order: ListTripsQuery['order']) {
+  switch (sort) {
+    case 'name':
+      return { name: order };
+    case 'createdAt':
+      return { createdAt: order };
+    case 'startDate':
+      return { startDate: order };
+  }
+}
+
 // -------------------- GET /api/trips --------------------
 
 /**
- * Every trip the caller is a member of.
+ * Every trip the caller is a member of, with optional search, filter, and sort.
  *
  * No requireTripRole here: this route is not scoped to one trip, so membership
- * IS the filter. The `where` clause is what enforces authorization.
+ * IS the filter. The `where` clause is what enforces authorization and every
+ * user-supplied filter below only ever NARROWS that set. None of them can
+ * widen it, which is the property that keeps this route safe.
+ *
+ * Deliberately not paginated. A trip list is a few dozen rows at most for this
+ * application, and pagination would change the response envelope and push page
+ * state into the UI for no benefit. `{ trips: [...] }` can grow a `nextCursor`
+ * later without breaking existing clients.
  */
 export async function listTrips(req: Request, res: Response) {
   // ----- 1. Check that the user is mounted to the request -----
@@ -55,11 +90,50 @@ export async function listTrips(req: Request, res: Response) {
 
   const userId = req.user.id;
 
-  // ----- 2. Search for all trips the user is a member of -----
+  // ----- 2. Validate the query string -----
+  // Throws a ZodError on a bad filter value, which the error middleware turns
+  // into a 422. Parsing rather than reading req.query directly is what stops a
+  // caller sorting by an arbitrary column.
+  const query = listTripsQuerySchema.parse(req.query);
+
+  // ----- 3. Search for all trips the user is a member of -----
   const trips = await prisma.trip.findMany({
-    // "trips where at least one member row belongs to me"
-    where: { members: { some: { userId } } },
-    orderBy: { startDate: 'asc' },
+    where: {
+      // AUTHORIZATION. "trips where at least one member row belongs to me",
+      // plus the role filter when one was given, since both conditions apply
+      // to the same membership row.
+      members: {
+        some: {
+          userId,
+          ...(query.role ? { role: query.role } : {}),
+        },
+      },
+
+      // SEARCH. Case-insensitive substring across the two fields a user would
+      // actually type. `mode: 'insensitive'` is a Postgres feature.
+      //
+      // This sits beside `members`, so Prisma ANDs them: you get
+      // (my trips) AND (name matches OR destination matches). Putting the OR
+      // at the top level alongside the membership check is what keeps the
+      // authorization filter from being bypassed.
+      ...(query.search
+        ? {
+            OR: [
+              { name: { contains: query.search, mode: 'insensitive' as const } },
+              { destination: { contains: query.search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+
+      // STATUS. Cannot be filtered directly - it is derived from dates, not
+      // stored - so it is translated into the date comparisons it actually
+      // means. See utils/tripStatus.ts. The alternative, fetching everything
+      // and filtering in JavaScript, is what you reach for if you forget that
+      // a derived value can still be expressed as a predicate.
+      ...(query.status ? statusDateFilter(query.status) : {}),
+    },
+
+    orderBy: buildTripOrderBy(query.sort, query.order),
 
     // Always use an explicit `select`. Returning whole rows leaks columns you
     // did not think about and silently grows the payload when the schema changes.
@@ -82,7 +156,7 @@ export async function listTrips(req: Request, res: Response) {
     },
   });
 
-  // ----- 3. Flatten the query shape into the response shape -----
+  // ----- 4. Flatten the query shape into the response shape -----
   // The client should not have to know that `yourRole` arrived as a one-element array
   const payload = trips.map(({ members, _count, ...trip }) => ({
     ...trip,
@@ -95,7 +169,7 @@ export async function listTrips(req: Request, res: Response) {
     yourRole: members[0]?.role ?? null,
   }));
 
-  // ----- 4. Respond with formatted shape -----
+  // ----- 5. Respond with formatted shape -----
   res.json({ trips: payload });
 }
 
