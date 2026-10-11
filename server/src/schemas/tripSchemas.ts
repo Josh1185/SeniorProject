@@ -10,7 +10,8 @@
  *              Every feature module should follow this shape:
  *              schemas/<feature>Schemas.ts + schemas/<feature>Schemas.test.ts
  *
- * LAST UPDATED: 2026-10-09 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-10-11 - Add list query schema (Josh Iehle)
+ *               2026-10-09 - File Created (Josh Iehle)
  */
 
 // -------------------- Module imports --------------------
@@ -81,3 +82,51 @@ export const updateTripSchema = tripFields
   );
 
 export type UpdateTripInput = z.infer<typeof updateTripSchema>;
+
+// -------------------- List Query Schemas --------------------
+
+/**
+ * Treats an empty query param as absent.
+ *
+ * A select or text input that the user clears sends `?status=` rather than
+ * omitting the key, and an empty string is not a valid enum member. Without
+ * this the UI would 422 the moment someone cleared a filter. Normalising here
+ * is kinder than making every client remember to strip empty values.
+ */
+const emptyToUndefined = (value: unknown) => (value === '' ? undefined : value);
+
+/**
+ * GET /api/trips?search=&status=&role=&sort=&order=
+ *
+ * Note that EVERY query param arrives as a string, so anything non-string
+ * needs coercion. These are all strings or enums, so none is needed here -
+ * but a `?page=2` would need z.coerce.number().
+ *
+ * This is the pattern every other list endpoint should copy. Activities,
+ * reservations and itinerary events all want some subset of the same controls.
+ */
+export const listTripsQuerySchema = z.object({
+  // Matched against name OR destination, case-insensitively.
+  search: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+
+  // Derived from dates rather than stored, so the controller translates this
+  // into date predicates via statusDateFilter(). See utils/tripStatus.ts.
+  status: z.preprocess(emptyToUndefined, z.enum(['UPCOMING', 'ACTIVE', 'COMPLETED']).optional()),
+
+  // "trips I own" vs "trips I was invited to".
+  role: z.preprocess(emptyToUndefined, z.enum(['OWNER', 'MEMBER']).optional()),
+
+  // Defaults reproduce the pre-filter behaviour: soonest trip first.
+  sort: z.preprocess(
+    emptyToUndefined,
+    z.enum(['name', 'startDate', 'createdAt']).default('startDate'),
+  ),
+  order: z.preprocess(emptyToUndefined, z.enum(['asc', 'desc']).default('asc')),
+});
+
+export type ListTripsQuery = z.infer<typeof listTripsQuerySchema>;

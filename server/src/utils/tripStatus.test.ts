@@ -89,8 +89,10 @@ function filterMatches(
   const startRule = 'startDate' in filter ? filter.startDate : undefined;
   const endRule = 'endDate' in filter ? filter.endDate : undefined;
 
-  if (startRule && startRule.gt && 'gt' in startRule && !(start > startRule.gt.getTime())) return false;
-  if (startRule && startRule.lte && 'lte' in startRule && !(start <= startRule.lte.getTime())) return false;
+  if (startRule && startRule.gt && 'gt' in startRule && !(start > startRule.gt.getTime()))
+    return false;
+  if (startRule && startRule.lte && 'lte' in startRule && !(start <= startRule.lte.getTime()))
+    return false;
   if (endRule && endRule.lt && 'lt' in endRule && !(end < endRule.lt.getTime())) return false;
   if (endRule && endRule.gte && 'gte' in endRule && !(end >= endRule.gte.getTime())) return false;
 

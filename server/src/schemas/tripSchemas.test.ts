@@ -12,7 +12,7 @@
 
 // -------------------- Module imports --------------------
 import { describe, expect, it } from 'vitest';
-import { createTripSchema, updateTripSchema } from './tripSchemas';
+import { createTripSchema, updateTripSchema, listTripsQuerySchema } from './tripSchemas';
 
 // -------------------- Test Helpers --------------------
 
@@ -136,5 +136,83 @@ describe('updateTripSchema', () => {
 
   it('still enforces field-level rules', () => {
     expect(updateTripSchema.safeParse({ name: '' }).success).toBe(false);
+  });
+});
+
+// -------------------- List Query Schema --------------------
+
+describe('listTripsQuerySchema', () => {
+  it('applies defaults when nothing is supplied', () => {
+    // An unfiltered GET /api/trips must behave exactly as it did before
+    // query params existed: soonest trip first.
+    const result = listTripsQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sort).toBe('startDate');
+      expect(result.data.order).toBe('asc');
+      expect(result.data.search).toBeUndefined();
+      expect(result.data.status).toBeUndefined();
+      expect(result.data.role).toBeUndefined();
+    }
+  });
+
+  it('accepts a full set of filters', () => {
+    const result = listTripsQuerySchema.safeParse({
+      search: 'orlando',
+      status: 'UPCOMING',
+      role: 'OWNER',
+      sort: 'name',
+      order: 'desc',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('treats an empty search as no search', () => {
+    // The user cleared the box. `?search=` must not become a search for "".
+    const result = listTripsQuerySchema.safeParse({ search: '' });
+    expect(result.success && result.data.search).toBeUndefined();
+  });
+
+  it('treats a whitespace-only search as no search', () => {
+    const result = listTripsQuerySchema.safeParse({ search: '   ' });
+    expect(result.success && result.data.search).toBeUndefined();
+  });
+
+  it('trims a real search term', () => {
+    const result = listTripsQuerySchema.safeParse({ search: '  orlando  ' });
+    expect(result.success && result.data.search).toBe('orlando');
+  });
+
+  it('treats an empty enum param as absent rather than invalid', () => {
+    // A <select> reset to its placeholder sends ?status=. Without the
+    // emptyToUndefined preprocess this would 422 and the UI would break
+    // the moment someone cleared a filter.
+    const result = listTripsQuerySchema.safeParse({ status: '', role: '', sort: '', order: '' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.status).toBeUndefined();
+      expect(result.data.role).toBeUndefined();
+      // Cleared sort/order fall back to the defaults, not to undefined.
+      expect(result.data.sort).toBe('startDate');
+      expect(result.data.order).toBe('asc');
+    }
+  });
+
+  it('rejects an unknown status', () => {
+    expect(listTripsQuerySchema.safeParse({ status: 'CANCELLED' }).success).toBe(false);
+  });
+
+  it('rejects an unknown sort field', () => {
+    // Important: without the enum, `sort` would be interpolated straight into
+    // an orderBy and a caller could sort by any column in the table.
+    expect(listTripsQuerySchema.safeParse({ sort: 'description' }).success).toBe(false);
+  });
+
+  it('rejects an unknown order direction', () => {
+    expect(listTripsQuerySchema.safeParse({ order: 'sideways' }).success).toBe(false);
+  });
+
+  it('rejects an over-long search term', () => {
+    expect(listTripsQuerySchema.safeParse({ search: 'x'.repeat(101) }).success).toBe(false);
   });
 });
