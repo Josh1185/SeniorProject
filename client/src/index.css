@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 
 @theme {
+  /* 50/100 for tinted backgrounds, 500 for accents, 600 for buttons and
+  links, 700 for hover. Keep all five slots filled even if the new palette
+  only specifies two or three - the components use all of them. */
   --color-brand-50:  oklch(0.984 0.014 180.7); /* #F0FDFA */
   --color-brand-100: oklch(0.953 0.050 180.8); /* #CCFBF1 */
   --color-brand-500: oklch(0.704 0.123 182.5); /* #14B8A6 */
@@ -12,4 +15,14 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+/**
+ * Native <dialog> renders centered by the browser but needs its default
+ * margins cleared to sit where we want it. The ::backdrop is the dimmed
+ * layer behind it; Tailwind's `backdrop:` variant can style it per-dialog,
+ * but a single default here keeps every modal consistent.
+ */
+dialog::backdrop {
+  background: rgb(15 23 42 / 0.45);
 }
