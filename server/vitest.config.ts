@@ -10,5 +10,5 @@ export default defineConfig({
     // There are tests now, so an empty run means something is wrong.
     // (This was `true` while the suite was empty.)
     passWithNoTests: false,
-  }
+  },
 });
