@@ -3,10 +3,7 @@ type TripSquadLogoProps = {
   showWordmark?: boolean;
 };
 
-export function TripSquadLogo({
-  className = "",
-  showWordmark = true,
-}: TripSquadLogoProps) {
+export function TripSquadLogo({ className = '', showWordmark = true }: TripSquadLogoProps) {
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
       <svg
@@ -30,12 +27,7 @@ export function TripSquadLogo({
           strokeWidth="2.5"
           strokeLinecap="round"
         />
-        <path
-          d="M8 12H18"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
+        <path d="M8 12H18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
         <path
           d="M8 20C12 20 14 16 18 12"
           stroke="currentColor"

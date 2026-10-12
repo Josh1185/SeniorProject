@@ -70,7 +70,10 @@ export function RegisterPage() {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="duration-150 font-medium text-brand-600 hover:underline hover:text-brand-700">
+          <Link
+            to="/login"
+            className="duration-150 font-medium text-brand-600 hover:underline hover:text-brand-700"
+          >
             Log in
           </Link>
         </>
@@ -102,7 +105,7 @@ export function RegisterPage() {
           required
           minLength={6}
           autoComplete="new-password"
-          placeholder='Enter your password'
+          placeholder="Enter your password"
         />
 
         <TextField
@@ -112,7 +115,7 @@ export function RegisterPage() {
           required
           minLength={6}
           autoComplete="new-password"
-          placeholder='Confirm your password'
+          placeholder="Confirm your password"
         />
 
         {error && (

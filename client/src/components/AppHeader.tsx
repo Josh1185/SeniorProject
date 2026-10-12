@@ -41,11 +41,9 @@ export function AppHeader() {
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         {/* ---------- Logo + context ---------- */}
         <Link to="/dashboard" className="flex items-center gap-2 text-lg">
-          <TripSquadLogo className='text-brand-600' />
+          <TripSquadLogo className="text-brand-600" />
 
-          {label && (
-            <span className="text-ink-700">{label}</span>
-          )}
+          {label && <span className="text-ink-700">{label}</span>}
         </Link>
 
         {/* ---------- Actions ---------- */}

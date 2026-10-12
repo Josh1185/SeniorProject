@@ -52,7 +52,7 @@ export function LandingPage() {
       {/* ---------- Hero ---------- */}
       <main className="w-full flex flex-1 items-center px-4 py-12 sm:px-6 lg:py-20">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <div className='text-center lg:text-start'>
+          <div className="text-center lg:text-start">
             <h1 className="text-4xl leading-tight font-bold text-ink-900 sm:text-5xl lg:text-6xl">
               Plan Together.
               <br />

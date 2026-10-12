@@ -13,6 +13,9 @@
 // -------------------- Type imports --------------------
 import type { ReactNode } from 'react';
 
+// -------------------- Asset imports --------------------
+import heroImage2 from '../assets/hero-image-2.png';
+
 // -------------------- Props interface --------------------
 interface AuthLayoutProps {
   title: string;
@@ -42,8 +45,10 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
 
       {/* ---------- Slogan side. Hidden on mobile, where it would just be a
            grey block above the fold. ---------- */}
-      <div aria-hidden="true" className="hidden flex-1 place-items-center bg-ink-200 lg:grid">
-        <p className="px-8 text-center text-2xl text-slate-500">Slogan w/ bg image</p>
+      <div aria-hidden="true" className="relative hidden flex-1 lg:block">
+        <img src={heroImage2} alt="" className="absolute inset-0 h-full w-full object-cover" />
+
+        <div className="absolute inset-0 bg-ink-900/25" />
       </div>
     </div>
   );
