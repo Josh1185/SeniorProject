@@ -92,7 +92,7 @@ export function ProfileMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-slate-200 text-sm font-medium text-slate-700 hover:ring-2 hover:ring-brand-500"
+        className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-ink-200 text-sm font-medium text-ink-700 hover:ring-2 hover:ring-brand-500 duration-150 cursor-pointer"
       >
         {user?.avatarUrl ? (
           <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -104,10 +104,10 @@ export function ProfileMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-2 w-60 rounded-lg border border-slate-200 bg-white p-4 shadow-lg"
+          className="absolute right-0 z-20 mt-2 w-60 rounded-lg border border-ink-300 bg-ink-50 p-4 shadow-lg"
         >
-          <div className="flex flex-col items-center gap-2 border-b border-slate-100 pb-4">
-            <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-slate-200 text-xl font-medium text-slate-700">
+          <div className="flex flex-col items-center gap-2 border-b border-ink-300 pb-4">
+            <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-full bg-ink-200 text-xl font-medium text-ink-700">
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -116,8 +116,8 @@ export function ProfileMenu() {
             </div>
 
             <div className="text-center">
-              <p className="font-medium text-slate-900">{name || 'Loading…'}</p>
-              <p className="text-xs text-slate-500">{user?.email}</p>
+              <p className="font-medium text-ink-900">{name || 'Loading…'}</p>
+              <p className="text-xs text-ink-700">{user?.email}</p>
             </div>
           </div>
 
@@ -127,7 +127,7 @@ export function ProfileMenu() {
             // void: we are deliberately not awaiting. Without it ESLint flags
             // an unhandled floating promise.
             onClick={() => void signOut()}
-            className="mt-3 w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+            className="mt-3 w-full rounded-md px-3 py-2 text-center text-sm text-white bg-brand-600 hover:bg-brand-700 cursor-pointer duration-150"
           >
             Log out
           </button>

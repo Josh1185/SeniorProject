@@ -21,7 +21,7 @@ export function AppLayout() {
   return (
     // min-h-full rather than h-full so a long page can grow past the viewport
     // instead of clipping.
-    <div className="flex min-h-full flex-col bg-slate-50">
+    <div className="flex min-h-full flex-col bg-ink-50">
       <AppHeader />
 
       {/* flex-1 makes the content area absorb the leftover height, so short

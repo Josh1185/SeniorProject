@@ -37,14 +37,14 @@ export function AppHeader() {
   const label = contextLabel(pathname);
 
   return (
-    <header className="border-b border-slate-200 bg-white">
+    <header className="border-b border-ink-300 bg-ink-50">
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         {/* ---------- Logo + context ---------- */}
         <Link to="/dashboard" className="flex items-center gap-2 text-lg">
           <TripSquadLogo className='text-brand-600' />
 
           {label && (
-            <span className="text-slate-500">{label}</span>
+            <span className="text-ink-700">{label}</span>
           )}
         </Link>
 
@@ -59,7 +59,7 @@ export function AppHeader() {
             disabled
             title="Notifications are not available yet"
             aria-label="Notifications"
-            className="grid h-9 w-9 place-items-center rounded-md text-slate-400 disabled:cursor-not-allowed"
+            className="grid h-9 w-9 place-items-center rounded-md text-ink-700 disabled:cursor-not-allowed"
           >
             {/* Inline SVG rather than an icon library: one icon does not
                 justify a dependency. Swap for a library if we end up needing
