@@ -16,15 +16,15 @@ import { Link } from 'react-router';
 
 export function ForgotPasswordPage() {
   return (
-    <div className="grid min-h-full place-items-center p-8 text-center">
+    <div className="grid min-h-full place-items-center p-8 text-center bg-ink-50">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Password reset</h1>
-        <p className="mt-2 max-w-sm text-slate-500">
+        <h1 className="text-xl font-semibold text-ink-900">Password reset</h1>
+        <p className="mt-2 max-w-sm text-ink-700">
           Not available yet. Ask the team to reset it for you for now.
         </p>
         <Link
           to="/login"
-          className="mt-6 inline-block rounded-md bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          className="mt-6 inline-block rounded-md bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700 duration-150"
         >
           Back to login
         </Link>
