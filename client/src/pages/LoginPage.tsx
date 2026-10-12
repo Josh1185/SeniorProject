@@ -1,82 +1,116 @@
 /**
  * FILE: LoginPage.tsx
- * DESCRIPTION: Login page via Supabase
+ * DESCRIPTION: Email + password sign in via Supabase.
  *
- * LAST UPDATED: 2026-09-26 - File Created (Josh Iehle)
+ *              Split from Register, which used to share this file behind a
+ *              mode toggle. Two routes means two shareable URLs and no
+ *              branching inside the submit handler.
+ *
+ * LAST UPDATED: 2026-10-11 - Split from register, new layout (Josh Iehle)
+ *               2026-09-26 - File Created (Josh Iehle)
  */
 
 // -------------------- Module and lib imports --------------------
-import { useState, useActionState } from 'react';
-import { Navigate } from 'react-router';
+import { useActionState } from 'react';
+import { Link, Navigate, useLocation } from 'react-router';
 import { useAuth } from '../lib/auth/useAuth';
 import { supabase } from '../lib/supabase';
 
 // -------------------- Component imports --------------------
+import { AuthLayout } from '../layouts/AuthLayout';
 import { TextField } from '../components/TextField';
 
 // -------------------- Component --------------------
 export function LoginPage() {
-  // ----- 1. Session and form state management -----
-  const { session } = useAuth();
-  const [email, setEmail] = useState('');
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  // ----- 1. Session state -----
+  const { session, loading } = useAuth();
+  const location = useLocation();
 
-  // ----- 2. Form action state management -----
+  // ProtectedRoute stashes where the user was headed before being bounced
+  // here, so a deep link survives the detour through login.
+  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard';
+
+  // ----- 2. Form action state -----
+  // useActionState replaces the usual trio of isPending / error / onSubmit.
+  // Whatever the action returns becomes the new `error` value.
   const [error, submitAction, isPending] = useActionState(
     async (_previousError: string | null, formData: FormData) => {
+      const email = String(formData.get('email') ?? '');
       const password = String(formData.get('password') ?? '');
 
-      const { error: authError } =
-        mode === 'signup'
-          ? await supabase.auth.signUp({ email, password })
-          : await supabase.auth.signInWithPassword({ email, password });
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-      // Whatever you return becomes the new `error` value.
+      // On success onAuthStateChange fires, AuthProvider updates, and the
+      // <Navigate> below redirects. No manual navigation needed here.
       return authError ? authError.message : null;
     },
     null,
   );
 
-  // ----- 3. Check for existing session -----
-  if (session) return <Navigate to="/dashboard" replace />;
+  // ----- 3. Redirect if already signed in -----
+  // Hooks must all run before any early return, which is why this sits below
+  // useActionState rather than at the top of the component.
+  if (loading) {
+    return <div className="grid h-full place-items-center text-slate-500">Loading…</div>;
+  }
+  if (session) return <Navigate to={from} replace />;
 
   // ----- 4. Render -----
   return (
-    <div className="grid h-full place-items-center bg-slate-50 p-6">
-      <div className="w-full max-w-sm rounded-xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">
-          {mode === 'signup' ? 'Create an account' : 'Sign in'}
-        </h1>
+    <AuthLayout
+      title="Welcome Back"
+      subtitle="Sign in to continue"
+      footer={
+        <>
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="font-medium text-slate-900 hover:underline">
+            Sign Up
+          </Link>
+        </>
+      }
+    >
+      <form action={submitAction} className="space-y-4">
+        <TextField
+          label="Email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="your_email@example.com"
+        />
 
-        <form action={submitAction} className="mt-6 space-y-4">
+        <div>
           <TextField
-            label="Email"
-            type="email"
+            label="Password"
+            name="password"
+            type="password"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="current-password"
           />
+          <div className="mt-1 text-right">
+            <Link
+              to="/forgot-password"
+              className="text-sm font-medium text-slate-600 hover:underline"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+        </div>
 
-          <TextField label="Password" type="password" name="password" required minLength={6} />
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={isPending}
-            className="w-full rounded-md bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-          >
-            {isPending ? 'Working…' : mode === 'signup' ? 'Sign up' : 'Sign in'}
-          </button>
-        </form>
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
 
         <button
-          onClick={() => setMode(mode === 'signup' ? 'signin' : 'signup')}
-          className="mt-4 text-sm text-slate-500 hover:text-slate-900"
+          type="submit"
+          disabled={isPending}
+          className="w-full rounded-md bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-700 disabled:opacity-50"
         >
-          {mode === 'signup' ? 'Already have an account?' : 'Need an account?'}
+          {isPending ? 'Signing in…' : 'Log In'}
         </button>
-      </div>
-    </div>
+      </form>
+    </AuthLayout>
   );
 }

@@ -28,7 +28,7 @@ const LABELS: Record<TripStatus, string> = {
 };
 
 // -------------------- Component --------------------
-export function StatusBadge({ status }: { status: TripStatus }) {
+export function TripStatusBadge({ status }: { status: TripStatus }) {
   return (
     <span
       className={`inline-block rounded-full px-3 py-1 text-xs font-medium ring-1 ${STYLES[status]}`}
