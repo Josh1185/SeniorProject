@@ -13,6 +13,9 @@ import { useAuth } from '../lib/auth/useAuth';
 // -------------------- Component imports --------------------
 import { TripSquadLogo } from '../components/TripSquadLogo';
 
+// -------------------- Asset imports --------------------
+import heroImage from '../assets/hero-image.png';
+
 // -------------------- Component --------------------
 export function LandingPage() {
   const { session, loading } = useAuth();
@@ -70,9 +73,10 @@ export function LandingPage() {
 
           {/* Placeholder for the product screenshot. aspect-video holds the
               space so the layout does not jump when a real image lands. */}
-          <div
-            aria-hidden="true"
-            className="aspect-video w-full rounded-xl bg-ink-200 lg:aspect-4/3"
+          <img
+            src={heroImage}
+            alt="The TripSquad trip workspace, showing a shared itinerary and group expenses"
+            className="aspect-video w-full rounded-xl object-cover lg:aspect-4/3"
           />
         </div>
       </main>
