@@ -9,6 +9,26 @@
   --color-brand-500: oklch(0.704 0.123 182.5); /* #14B8A6 */
   --color-brand-600: oklch(0.511 0.086 186.4); /* #0F766E */
   --color-brand-700: oklch(0.437 0.071 188.2); /* #115E59 */
+
+  /*
+  ink-900 → primary text
+  ink-700 → secondary headings
+  ink-600 → body/supporting text
+  ink-500 → muted labels/placeholders
+  ink-300 → borders
+  ink-200 → separators
+  ink-100 → subtle card backgrounds
+  ink-50 → page background */
+  --color-ink-50:  oklch(0.985 0.003 190); /* #F8FAFA */
+  --color-ink-100: oklch(0.958 0.005 190); /* #EEF2F2 */
+  --color-ink-200: oklch(0.906 0.008 190); /* #D9E0E0 */
+  --color-ink-300: oklch(0.825 0.011 190); /* #BCC8C8 */
+  --color-ink-400: oklch(0.683 0.015 190); /* #879898 */
+  --color-ink-500: oklch(0.565 0.016 190); /* #607272 */
+  --color-ink-600: oklch(0.478 0.015 190); /* #475858 */
+  --color-ink-700: oklch(0.399 0.014 190); /* #344242 */
+  --color-ink-800: oklch(0.305 0.012 190); /* #222D2D */
+  --color-ink-900: oklch(0.235 0.010 190); /* #151D1D */
 }
 
 html,

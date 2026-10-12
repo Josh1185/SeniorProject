@@ -10,6 +10,9 @@
 import { Link, Navigate } from 'react-router';
 import { useAuth } from '../lib/auth/useAuth';
 
+// -------------------- Component imports --------------------
+import { TripSquadLogo } from '../components/TripSquadLogo';
+
 // -------------------- Component --------------------
 export function LandingPage() {
   const { session, loading } = useAuth();
@@ -22,21 +25,21 @@ export function LandingPage() {
   if (session) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="flex min-h-full flex-col bg-white">
+    <div className="flex min-h-full flex-col bg-ink-50">
       {/* ---------- Header. Separate from AppHeader: this page has no profile menu or notifications, because nobody is signed in. ---------- */}
-      <header className="flex h-16 items-center justify-between border-b border-slate-200 px-4 sm:px-6">
-        <span className="text-lg font-semibold text-slate-900">TripSquad</span>
+      <header className="flex h-16 items-center justify-between border-b border-ink-300 px-4 sm:px-6">
+        <TripSquadLogo className="text-brand-600" />
 
         <div className="flex items-center gap-2">
           <Link
             to="/login"
-            className="rounded-md px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+            className="rounded-md px-4 py-2 text-sm text-ink-700 hover:text-ink-900 font-medium"
           >
             Log In
           </Link>
           <Link
             to="/register"
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Sign Up
           </Link>
@@ -47,19 +50,19 @@ export function LandingPage() {
       <main className="flex flex-1 items-center px-4 py-12 sm:px-6 lg:py-20">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div>
-            <h1 className="text-4xl leading-tight font-bold text-slate-900 sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl leading-tight font-bold text-ink-900 sm:text-5xl lg:text-6xl">
               Plan Together.
               <br />
               Travel Better.
             </h1>
 
-            <p className="mt-6 max-w-md text-lg text-slate-600">
+            <p className="mt-6 max-w-md text-lg text-ink-700">
               Organize trips, coordinate plans, and manage group travel all in one place.
             </p>
 
             <Link
               to="/register"
-              className="mt-8 inline-block rounded-md bg-slate-900 px-8 py-3 font-medium text-white hover:bg-slate-700"
+              className="mt-8 inline-block rounded-md bg-brand-600 px-8 py-3 font-medium text-white hover:bg-brand-700"
             >
               Get Started
             </Link>
@@ -69,7 +72,7 @@ export function LandingPage() {
               space so the layout does not jump when a real image lands. */}
           <div
             aria-hidden="true"
-            className="aspect-video w-full rounded-xl bg-slate-200 lg:aspect-4/3"
+            className="aspect-video w-full rounded-xl bg-ink-100 lg:aspect-4/3"
           />
         </div>
       </main>

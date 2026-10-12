@@ -14,6 +14,7 @@ import { Link, useLocation } from 'react-router';
 
 // -------------------- Component imports --------------------
 import { ProfileMenu } from './ProfileMenu';
+import { TripSquadLogo } from './TripSquadLogo';
 
 // -------------------- Internal Helpers --------------------
 
@@ -40,17 +41,10 @@ export function AppHeader() {
       <div className="flex h-16 items-center justify-between px-4 sm:px-6">
         {/* ---------- Logo + context ---------- */}
         <Link to="/dashboard" className="flex items-center gap-2 text-lg">
-          <span className="font-semibold text-slate-900">TripSquad</span>
+          <TripSquadLogo className='text-brand-600' />
 
           {label && (
-            <>
-              {/* Decorative divider, hidden from screen readers so it is not
-                  announced as a stray pipe character. */}
-              <span aria-hidden="true" className="text-slate-300">
-                |
-              </span>
-              <span className="text-slate-500">{label}</span>
-            </>
+            <span className="text-slate-500">{label}</span>
           )}
         </Link>
 
