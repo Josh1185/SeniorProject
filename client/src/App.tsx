@@ -89,7 +89,6 @@ export function App() {
           <Route path="expenses" element={<ExpensesPage />} />
           <Route path="members" element={<MembersPage />} />
         </Route>
-
       </Route>
 
       {/* ----- Catch-all ----- */}

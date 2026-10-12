@@ -93,9 +93,7 @@ export function TripSidebar() {
           links silently resolve to the wrong place, which is maddening to
           debug. Fail loudly in development instead. */}
       {!tripId && import.meta.env.DEV && (
-        <p className="mt-2 text-xs text-red-600">
-          TripSidebar rendered without a :tripId param.
-        </p>
+        <p className="mt-2 text-xs text-red-600">TripSidebar rendered without a :tripId param.</p>
       )}
     </nav>
   );

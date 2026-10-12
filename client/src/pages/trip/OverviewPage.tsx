@@ -106,9 +106,7 @@ export function OverviewPage() {
 
             <div>
               <dt className="text-xs text-slate-500">Trip Owner</dt>
-              <dd className="text-sm font-medium text-slate-900">
-                {data.createdBy.displayName}
-              </dd>
+              <dd className="text-sm font-medium text-slate-900">{data.createdBy.displayName}</dd>
             </div>
 
             <div>
@@ -148,10 +146,7 @@ export function OverviewPage() {
                 className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2"
               >
                 <div className="flex items-center gap-2">
-                  <div
-                    aria-hidden="true"
-                    className="h-8 w-8 shrink-0 rounded-full bg-slate-200"
-                  />
+                  <div aria-hidden="true" className="h-8 w-8 shrink-0 rounded-full bg-slate-200" />
                   <span className="text-sm text-slate-900">{member.user.displayName}</span>
                 </div>
                 <span className="text-xs text-slate-500">{member.role}</span>
