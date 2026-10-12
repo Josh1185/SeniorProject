@@ -58,7 +58,7 @@ export function RegisterPage() {
 
   // ----- 3. Redirect if already signed in -----
   if (loading) {
-    return <div className="grid h-full place-items-center text-slate-500">Loading…</div>;
+    return <div className="grid h-full place-items-center text-ink-900">Loading…</div>;
   }
   if (session) return <Navigate to="/dashboard" replace />;
 
@@ -70,7 +70,7 @@ export function RegisterPage() {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="font-medium text-slate-900 hover:underline">
+          <Link to="/login" className="duration-150 font-medium text-brand-600 hover:underline hover:text-brand-700">
             Log in
           </Link>
         </>
@@ -102,6 +102,7 @@ export function RegisterPage() {
           required
           minLength={6}
           autoComplete="new-password"
+          placeholder='Enter your password'
         />
 
         <TextField
@@ -111,6 +112,7 @@ export function RegisterPage() {
           required
           minLength={6}
           autoComplete="new-password"
+          placeholder='Confirm your password'
         />
 
         {error && (
@@ -122,7 +124,7 @@ export function RegisterPage() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-md bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+          className="w-full rounded-md bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50 cursor-pointer duration-150"
         >
           {isPending ? 'Creating account…' : 'Create Account'}
         </button>

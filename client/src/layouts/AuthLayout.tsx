@@ -25,24 +25,24 @@ interface AuthLayoutProps {
 // -------------------- Component --------------------
 export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
   return (
-    <div className="flex min-h-full">
+    <div className="flex min-h-full bg-ink-50">
       {/* ---------- Form side ---------- */}
-      <div className="flex w-full flex-col p-6 sm:p-10 lg:w-[42%]">
+      <div className="flex w-full flex-col p-6 sm:p-10 lg:w-1/4 bg-ink-50">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-slate-900">{title}</h1>
-          <p className="mt-1 text-slate-500">{subtitle}</p>
+          <h1 className="text-3xl font-bold text-ink-900">{title}</h1>
+          <p className="mt-1 text-ink-700">{subtitle}</p>
 
           <div className="mt-8 max-w-sm">{children}</div>
         </div>
 
         {/* mt-auto pushes this to the bottom of the column regardless of how
             tall the form is, which is what keeps Login and Register aligned. */}
-        <div className="mt-auto pt-8 text-center text-sm text-slate-500">{footer}</div>
+        <div className="mt-auto pt-8 text-center text-sm text-ink-700">{footer}</div>
       </div>
 
       {/* ---------- Slogan side. Hidden on mobile, where it would just be a
            grey block above the fold. ---------- */}
-      <div aria-hidden="true" className="hidden flex-1 place-items-center bg-slate-200 lg:grid">
+      <div aria-hidden="true" className="hidden flex-1 place-items-center bg-ink-200 lg:grid">
         <p className="px-8 text-center text-2xl text-slate-500">Slogan w/ bg image</p>
       </div>
     </div>

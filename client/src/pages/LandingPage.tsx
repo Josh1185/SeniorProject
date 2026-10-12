@@ -33,13 +33,13 @@ export function LandingPage() {
         <div className="flex items-center gap-2">
           <Link
             to="/login"
-            className="rounded-md px-4 py-2 text-sm text-ink-700 hover:text-ink-900 font-medium"
+            className="duration-150 rounded-md px-4 py-2 text-sm text-ink-700 hover:text-ink-900 font-medium"
           >
             Log In
           </Link>
           <Link
             to="/register"
-            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="duration-150 rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Sign Up
           </Link>
@@ -62,7 +62,7 @@ export function LandingPage() {
 
             <Link
               to="/register"
-              className="mt-8 inline-block rounded-md bg-brand-600 px-8 py-3 font-medium text-white hover:bg-brand-700"
+              className="duration-150 mt-8 inline-block rounded-md bg-brand-600 px-8 py-3 font-medium text-white hover:bg-brand-700"
             >
               Get Started
             </Link>

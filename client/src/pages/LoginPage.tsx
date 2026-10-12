@@ -51,7 +51,7 @@ export function LoginPage() {
   // Hooks must all run before any early return, which is why this sits below
   // useActionState rather than at the top of the component.
   if (loading) {
-    return <div className="grid h-full place-items-center text-slate-500">Loading…</div>;
+    return <div className="grid h-full place-items-center text-ink-900">Loading…</div>;
   }
   if (session) return <Navigate to={from} replace />;
 
@@ -63,7 +63,7 @@ export function LoginPage() {
       footer={
         <>
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-medium text-slate-900 hover:underline">
+          <Link to="/register" className="duration-150 font-medium text-brand-600 hover:underline hover:text-brand-700">
             Sign Up
           </Link>
         </>
@@ -86,11 +86,12 @@ export function LoginPage() {
             type="password"
             required
             autoComplete="current-password"
+            placeholder="Enter your password"
           />
           <div className="mt-1 text-right">
             <Link
               to="/forgot-password"
-              className="text-sm font-medium text-slate-600 hover:underline"
+              className="text-sm font-medium text-ink-700 hover:underline duration-150"
             >
               Forgot Password?
             </Link>
@@ -106,7 +107,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full rounded-md bg-slate-900 px-4 py-3 font-medium text-white hover:bg-slate-700 disabled:opacity-50"
+          className="w-full rounded-md bg-brand-600 px-4 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50 cursor-pointer duration-150"
         >
           {isPending ? 'Signing in…' : 'Log In'}
         </button>

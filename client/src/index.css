@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@fontsource/poppins';
 
 @theme {
   /* 50/100 for tinted backgrounds, 500 for accents, 600 for buttons and
@@ -35,6 +36,7 @@ html,
 body,
 #root {
   height: 100%;
+  font-family: 'Poppins';
 }
 
 /**
