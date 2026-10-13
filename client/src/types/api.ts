@@ -66,20 +66,41 @@ export interface TripMemberSummary {
   user: UserSummary;
 }
 
+/**
+ * The trip object inside TripDetailResponse, named separately so components
+ * that take "a trip" (the edit form, for example) can type their prop.
+ */
+export interface TripDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  status: TripStatus;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: UserSummary;
+  members: TripMemberSummary[];
+}
+
 /** GET /api/trips/:tripId */
 export interface TripDetailResponse {
-  trip: {
-    id: string;
-    name: string;
-    description: string | null;
-    destination: string;
-    startDate: string;
-    endDate: string;
-    status: TripStatus;
-    createdAt: string;
-    updatedAt: string;
-    createdBy: UserSummary;
-    members: TripMemberSummary[];
-  };
+  trip: TripDetail;
   yourRole: TripRole;
 }
+
+/**
+ * POST /api/trips - mirrors createTripSchema on the server.
+ * Dates are YYYY-MM-DD, which is what z.iso.date() accepts.
+ */
+export interface CreateTripBody {
+  name: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  description?: string;
+}
+
+/** PATCH /api/trips/:tripId - every field optional. */
+export type UpdateTripBody = Partial<CreateTripBody>;
