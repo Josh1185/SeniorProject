@@ -5,10 +5,11 @@ node_modules/
 dist/
 build/
 
-# environment 
+# environment
 .env
 .env.local
 .env.*.local
+.env.*
 !.env.example
 
 # generated Prisma client (each person regenerates locally)
