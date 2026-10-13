@@ -42,7 +42,8 @@ const TRIP_NAV = [
  * the current page gets highlighted without any manual pathname comparison.
  */
 function linkClasses({ isActive }: { isActive: boolean }): string {
-  const base = 'block whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors duration-150';
+  const base =
+    'block whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors duration-150';
   return isActive
     ? `${base} bg-ink-100 font-medium text-brand-600`
     : `${base} text-ink-700 hover:bg-ink-100 hover:text-ink-900`;
