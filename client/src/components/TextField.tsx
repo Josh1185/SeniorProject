@@ -16,11 +16,11 @@ interface TextFieldProps extends ComponentProps<'input'> {
 // -------------------- Component --------------------
 export function TextField({ label, className = '', ...props }: TextFieldProps) {
   return (
-    <label className="block text-sm font-medium text-slate-700">
+    <label className="block text-sm font-medium text-ink-900">
       {label}
       <input
         {...props}
-        className={`mt-1 w-full rounded-md border border-slate-300 px-3 py-2 ${className}`}
+        className={`mt-1 w-full rounded-md border-2 bg-ink-100 focus:border-brand-500 duration-150 border-ink-300 px-3 py-2 ${className}`}
       />
     </label>
   );

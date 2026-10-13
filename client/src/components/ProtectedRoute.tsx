@@ -25,7 +25,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   // ----- 2. Wait for session to load before checking it -----
   if (loading) {
-    return <div className="grid h-full place-items-center text-slate-500">Loading…</div>;
+    return <div className="grid h-full place-items-center text-ink-700">Loading…</div>;
   }
 
   // ----- 3. Navigate back to login if session does not exist -----
