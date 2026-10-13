@@ -36,7 +36,6 @@ export function ConfirmDialog({
   destructive = false,
   pending = false,
 }: ConfirmDialogProps) {
-
   // ----- 1. Render -----
   return (
     <Modal open={open} onClose={onClose} title={title}>
