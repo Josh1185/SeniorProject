@@ -26,23 +26,23 @@ export function MyTripsPage() {
         <input
           type="search"
           placeholder="Search trips…"
-          className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+          className="min-w-0 flex-1 rounded-md border border-ink-300 px-3 py-2 text-sm"
         />
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 cursor-pointer duration-150"
         >
           Create Trip
         </button>
       </div>
 
-      <div className="mt-6 rounded-lg border border-dashed border-slate-300 p-12 text-center">
-        <p className="text-slate-500">The trip list goes here (F7).</p>
+      <div className="mt-6 rounded-lg border border-dashed border-ink-300 p-12 text-center">
+        <p className="text-ink-900">The trip list goes here.</p>
       </div>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create New Trip">
-        <p className="text-sm text-slate-500">The create-trip form goes here (F7).</p>
+        <p className="text-sm text-ink-900">The create-trip form goes here.</p>
       </Modal>
     </div>
   );

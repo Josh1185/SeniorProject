@@ -42,10 +42,10 @@ const TRIP_NAV = [
  * the current page gets highlighted without any manual pathname comparison.
  */
 function linkClasses({ isActive }: { isActive: boolean }): string {
-  const base = 'block whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors';
+  const base = 'block whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors duration-150';
   return isActive
-    ? `${base} bg-slate-100 font-medium text-slate-900`
-    : `${base} text-slate-600 hover:bg-slate-50 hover:text-slate-900`;
+    ? `${base} bg-ink-100 font-medium text-brand-600`
+    : `${base} text-ink-700 hover:bg-ink-100 hover:text-ink-900`;
 }
 
 // -------------------- Component --------------------
@@ -57,7 +57,7 @@ export function TripSidebar() {
   return (
     <nav
       aria-label="Trip sections"
-      className="flex shrink-0 flex-col lg:w-52 lg:rounded-lg lg:border lg:border-slate-200 lg:bg-white lg:p-3"
+      className="flex shrink-0 flex-col lg:w-52 lg:rounded-lg lg:border lg:border-ink-300 lg:bg-ink-150 lg:p-3"
     >
       {/* overflow-x-auto on mobile lets the seven tabs scroll sideways rather
           than wrapping into a tall block that pushes the content down. */}
@@ -83,7 +83,7 @@ export function TripSidebar() {
       <div className="mt-auto hidden pt-4 lg:block">
         <NavLink
           to="/dashboard"
-          className="block rounded-md px-3 py-2 text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          className="block rounded-md px-3 py-2 text-sm text-ink-700 hover:bg-ink-100 hover:text-ink-900 duration-150"
         >
           &lt; Back to Dashboard
         </NavLink>

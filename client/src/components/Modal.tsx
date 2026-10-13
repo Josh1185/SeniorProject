@@ -65,10 +65,10 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
       onClose={onClose}
       onClick={handleClick}
       aria-labelledby="modal-title"
-      className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/45"
+      className="w-full max-w-md rounded-xl border border-ink-300 bg-ink-50 p-0 shadow-xl backdrop:bg-slate-900/45"
     >
-      <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-        <h2 id="modal-title" className="text-lg font-semibold text-slate-900">
+      <div className="flex items-center justify-between border-b border-ink-300 px-6 py-4">
+        <h2 id="modal-title" className="text-lg font-semibold text-ink-900">
           {title}
         </h2>
 
@@ -76,7 +76,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="rounded-md p-1 text-ink-700 hover:bg-ink-100 hover:text-ink-900 cursor-pointer duration-150"
         >
           <svg
             className="h-5 w-5"

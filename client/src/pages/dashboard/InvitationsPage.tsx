@@ -7,8 +7,8 @@
 
 export function InvitationsPage() {
   return (
-    <div className="rounded-lg border border-dashed border-slate-300 p-12 text-center">
-      <p className="text-slate-500">Pending invitations go here.</p>
+    <div className="rounded-lg border border-dashed border-ink-300 p-12 text-center">
+      <p className="text-ink-900">Pending invitations go here.</p>
     </div>
   );
 }
