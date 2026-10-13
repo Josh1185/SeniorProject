@@ -17,6 +17,7 @@ import { createTrip } from '../../services/tripService';
 // -------------------- Type imports --------------------
 import type { CreateTripBody } from '../../types/api';
 
+// -------------------- Hook --------------------
 export function useCreateTrip() {
   const queryClient = useQueryClient();
 
