@@ -76,15 +76,24 @@ export function MyTripsPage() {
   const [searchInput, setSearchInput] = useState(search);
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
+  const [lastSearchParam, setLastSearchParam] = useState(search);
+
+  if (search !== lastSearchParam) {
+    setLastSearchParam(search);
+    setSearchInput(search);
+  }
+
   useEffect(() => {
+    if (debouncedSearch !== searchInput) return;
+
     // Nothing to do if the URL already agrees - without this guard the effect
     // would write the same value back and loop.
-    if (debouncedSearch === search) return;
+    if (searchInput === search) return;
 
     setSearchParams(
       (previous) => {
         const next = new URLSearchParams(previous);
-        if (debouncedSearch) next.set('search', debouncedSearch);
+        if (searchInput) next.set('search', searchInput);
         else next.delete('search');
         return next;
       },
@@ -92,7 +101,7 @@ export function MyTripsPage() {
       // entries, so each keystroke replaces rather than pushes.
       { replace: true },
     );
-  }, [debouncedSearch, search, setSearchParams]);
+  }, [debouncedSearch, searchInput, search, setSearchParams]);
 
   /** Writes one filter to the URL, clearing it when the value is empty. */
   function setFilter(key: string, value: string) {
