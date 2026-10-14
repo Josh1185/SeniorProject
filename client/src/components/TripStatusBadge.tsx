@@ -16,8 +16,8 @@ import type { TripStatus } from '../types/api';
 // Record<TripStatus, string> means adding a status to the union without adding
 // it here is a compile error, not a silently unstyled badge.
 const STYLES: Record<TripStatus, string> = {
-  UPCOMING: 'bg-brand-50 text-brand-700 ring-brand-100',
-  ACTIVE: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
+  UPCOMING: 'bg-brand-50 text-brand-700 ring-brand-700',
+  ACTIVE: 'bg-emerald-50 text-emerald-600 ring-emerald-500',
   COMPLETED: 'bg-slate-100 text-slate-600 ring-slate-200',
 };
 
