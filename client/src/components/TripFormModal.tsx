@@ -7,21 +7,30 @@
  *              every feature's form modal should follow: two near-identical
  *              components drift apart within a month.
  *
- * LAST UPDATED: 2026-10-13 - File Created (Josh Iehle)
+ *              THIS IS THE WORKED EXAMPLE for the shared form components and
+ *              for the FormState pattern. If you are building
+ *              ActivityFormModal or ReservationFormModal, copy this shape.
+ *
+ * LAST UPDATED: 2026-10-16 - Shared form components; keep values on error (Josh Iehle)
+ *               2026-10-13 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
 import type { TripDetail } from '../types/api';
+import type { FormState } from '../lib/formState';
 
 // -------------------- Module and lib imports --------------------
 import { useActionState, useState } from 'react';
 import { useCreateTrip } from '../hooks/trips/useCreateTrip';
 import { useUpdateTrip } from '../hooks/trips/useUpdateTrip';
 import { toDateInputValue } from '../lib/format';
+import { readFormValues } from '../lib/formState';
 
 // -------------------- Component imports --------------------
 import { DestinationInput } from './DestinationInput';
 import { Modal } from './Modal';
+import { DateTimeInput } from './form/DateTimeInput';
+import { TextArea } from './form/TextArea';
 import { TextField } from './form/TextField';
 
 // -------------------- Props interface --------------------
@@ -32,6 +41,28 @@ interface TripFormModalProps {
   trip?: TripDetail;
   /** Called with the trip id after a successful create. */
   onCreated?: (tripId: string) => void;
+}
+
+// -------------------- Form Values --------------------
+
+/**
+ * The uncontrolled fields, in the order they appear in the form.
+ *
+ * `destination` is NOT here: it is controlled separately below, because the
+ * autocomplete writes to it programmatically.
+ */
+const FIELD_NAMES = ['name', 'startDate', 'endDate', 'description'] as const;
+
+type TripFormValues = Record<(typeof FIELD_NAMES)[number], string>;
+
+/** The values a form starts with: the trip being edited, or blank. */
+function initialValues(trip: TripDetail | undefined): TripFormValues {
+  return {
+    name: trip?.name ?? '',
+    startDate: toDateInputValue(trip?.startDate),
+    endDate: toDateInputValue(trip?.endDate),
+    description: trip?.description ?? '',
+  };
 }
 
 // -------------------- Component --------------------
@@ -49,23 +80,47 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
   const updateTrip = useUpdateTrip(trip?.id ?? '');
 
   // ----- 3. Submit action -----
-  // Returning a string sets the error; returning null clears it. React tracks
-  // `isPending` for us, so there is no separate loading flag to forget.
-  const [error, submitAction, isPending] = useActionState(
-    async (_previousError: string | null, formData: FormData) => {
-      const body = {
-        name: String(formData.get('name') ?? '').trim(),
-        destination: destination.trim(),
-        startDate: String(formData.get('startDate') ?? ''),
-        endDate: String(formData.get('endDate') ?? ''),
-        description: String(formData.get('description') ?? '').trim() || undefined,
-      };
+  // Returns a FormState, never a bare string. See lib/formState.ts: React 19
+  // resets the form after this runs, so the returned `values` are what keep
+  // the user's input on screen when validation fails.
+  const [state, submitAction, isPending] = useActionState(
+    async (
+      _previous: FormState<TripFormValues>,
+      formData: FormData,
+    ): Promise<FormState<TripFormValues>> => {
+      const values = readFormValues(formData, FIELD_NAMES);
+      const trimmedDestination = destination.trim();
 
-      // Checked here as well as on the server. The server is the real guard;
-      // this just saves a round trip and gives instant feedback.
-      if (body.endDate < body.startDate) {
-        return 'End date must be on or after the start date.';
+      // ----- Client-side checks -----
+      // These duplicate the server's rules on purpose: the server is the real
+      // guard, this just saves a round trip and points at the right field.
+      // Everything the browser can enforce on its own - required, maxLength -
+      // is an attribute on the control instead of a check here.
+      // A form-level message rather than a field one, because DestinationInput
+      // does not take an `error` prop yet. When it is replaced by a picker
+      // built on FormField, this becomes a fieldError like the date one below.
+      if (!trimmedDestination) {
+        return { values, formError: 'Destination is required.' };
       }
+
+      // String comparison, not Date parsing. Both are YYYY-MM-DD, and comparing
+      // those lexicographically is the same as comparing the dates - with none
+      // of the timezone exposure that `new Date(...)` brings.
+      if (values.endDate < values.startDate) {
+        return {
+          values,
+          fieldErrors: { endDate: 'End date must be on or after the start date.' },
+        };
+      }
+
+      // ----- Submit -----
+      const body = {
+        name: values.name,
+        destination: trimmedDestination,
+        startDate: values.startDate,
+        endDate: values.endDate,
+        description: values.description || undefined,
+      };
 
       try {
         if (isEdit) {
@@ -76,29 +131,42 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
         }
 
         onClose();
-        return null;
+
+        // Blank values on success, so reopening the modal to create another
+        // trip does not show the last one's text. The modal unmounts its
+        // children while closed in most cases, but relying on that would make
+        // this depend on Modal's internals.
+        return { values: initialValues(trip) };
       } catch (mutationError) {
         // ApiError carries the server's message, which for a 422 is the
         // specific field problem rather than a generic failure.
-        return mutationError instanceof Error ? mutationError.message : 'Something went wrong.';
+        return {
+          values,
+          formError:
+            mutationError instanceof Error ? mutationError.message : 'Something went wrong.',
+        };
       }
     },
-    null,
+    { values: initialValues(trip) },
   );
 
   // ----- 4. Render -----
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Trip' : 'Create New Trip'}>
-      {/* `key` remounts the form when switching between trips, so the
-          uncontrolled inputs pick up the new defaultValues. Without it, React
+      {/* `key` remounts the form when switching between trips, which resets
+          both the uncontrolled inputs and useActionState. Without it, React
           reuses the DOM nodes and you edit trip B with trip A's values. */}
       <form key={trip?.id ?? 'new'} action={submitAction} className="space-y-4">
+        {/* Every defaultValue comes from state.values, not from `trip`. That is
+            the whole fix for fields clearing on a failed submit - see
+            lib/formState.ts. */}
         <TextField
           label="Trip Name"
           name="name"
           required
           maxLength={120}
-          defaultValue={trip?.name ?? ''}
+          defaultValue={state.values.name}
+          error={state.fieldErrors?.name}
           placeholder="Enter your trip name"
         />
 
@@ -111,41 +179,39 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* type="date" gives a native picker and always submits YYYY-MM-DD,
-              which is exactly what z.iso.date() on the server expects. The
-              wireframe's MM-DD-YYYY placeholder does not apply - the browser
-              renders its own format based on the user's locale. */}
-          <TextField
+          {/* mode="date" is the default and gives a native picker that always
+              submits YYYY-MM-DD, which is exactly what z.iso.date() expects.
+              The wireframe's MM-DD-YYYY placeholder does not apply - the
+              browser renders its own format from the user's locale. */}
+          <DateTimeInput
             label="Start Date"
             name="startDate"
-            type="date"
             required
-            defaultValue={toDateInputValue(trip?.startDate)}
+            defaultValue={state.values.startDate}
+            error={state.fieldErrors?.startDate}
           />
-          <TextField
+          <DateTimeInput
             label="End Date"
             name="endDate"
-            type="date"
             required
-            defaultValue={toDateInputValue(trip?.endDate)}
+            defaultValue={state.values.endDate}
+            error={state.fieldErrors?.endDate}
           />
         </div>
 
-        <label className="block text-sm font-medium text-ink-900">
-          Description
-          <textarea
-            name="description"
-            rows={3}
-            maxLength={2000}
-            defaultValue={trip?.description ?? ''}
-            placeholder="Enter your trip description"
-            className="mt-1 w-full resize-y rounded-md border-2 border-ink-300 bg-ink-100 px-3 py-2 text-ink-900"
-          />
-        </label>
+        <TextArea
+          label="Description"
+          name="description"
+          rows={3}
+          maxLength={2000}
+          defaultValue={state.values.description}
+          error={state.fieldErrors?.description}
+          placeholder="Enter your trip description"
+        />
 
-        {error && (
+        {state.formError && (
           <p role="alert" className="text-sm text-red-600">
-            {error}
+            {state.formError}
           </p>
         )}
 
