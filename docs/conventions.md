@@ -2,9 +2,14 @@
 
 How to build your feature in TripSquad.
 
-**You are not expected to make design decisions.** Every pattern you need already
-exists in the Trip feature. This document tells you which file to copy and what
-to change.
+**You are not expected to invent the plumbing.** Every pattern you need for
+reading, creating, updating and deleting your feature's records already exists
+in the Trip feature. This document tells you which file to copy and what to
+change.
+
+**Your feature also has behavior this document does not cover** - voting,
+scheduling, splitting, invitations. That part comes with a short written spec
+from Josh. Section 7 says which is which, and what to do when you reach it.
 
 If something here is unclear or doesn't match what you see in the code, say so in
 the chat. A wrong guess costs a day; asking costs five minutes.
@@ -19,14 +24,15 @@ the chat. A wrong guess costs a day; asking costs five minutes.
 4. [Rules that will break things if you ignore them](#4-rules-that-will-break-things-if-you-ignore-them)
 5. [When something goes wrong](#5-when-something-goes-wrong)
 6. [Before you open a pull request](#6-before-you-open-a-pull-request)
+7. [What this document does not cover](#7-what-this-document-does-not-cover)
 
 ---
 
 ## 1. The one rule
 
-**Copy the Trip feature.** It exists so you don't have to invent anything.
+**Copy the Trip feature.** It exists so you don't have to invent the plumbing.
 
-These eleven files are your reference. Open them before you write code, and
+These thirteen files are your reference. Open them before you write code, and
 again whenever you're unsure:
 
 **Server**
@@ -50,6 +56,7 @@ again whenever you're unsure:
 | `client/src/hooks/trips/*.ts`                | one file per query/mutation |
 | `client/src/pages/dashboard/MyTripsPage.tsx` | a list page                 |
 | `client/src/pages/trip/OverviewPage.tsx`     | a detail view's layout      |
+| `client/src/lib/format.ts` | formatter utils for money/date displays |
 
 Every example below uses **Activities** (Brandon's feature). Swap the names for
 yours.
@@ -176,13 +183,58 @@ export async function listActivities(req: Request, res: Response) {
 mount already did it. By the time your controller runs, the caller is a member
 of that trip. `where: { tripId }` is all the scoping you need.
 
+**Step 3b - query parameters.** If your list page will have a search box or a
+sort dropdown, and most will, the server has to accept them in **this** PR,
+not later. Copy `listTripsQuerySchema` from `tripSchemas.ts`:
+
+```ts
+export const listActivitiesQuerySchema = z.object({
+  search: z.preprocess(emptyToUndefined, z.string().trim().max(200).optional()),
+  sort: z.enum(['name', 'votes', 'createdAt']).default('createdAt'),
+  order: z.enum(['asc', 'desc']).default('desc'),
+});
+```
+
+Then in the controller, exactly as `listTrips` does it:
+
+```ts
+const query = listActivitiesQuerySchema.parse(req.query);
+
+const activities = await prisma.activity.findMany({
+  where: {
+    tripId,
+    // Case-insensitive partial match, and `undefined` means "no filter" -
+    // which is why emptyToUndefined matters. An empty string would filter.
+    ...(query.search && {
+      name: { contains: query.search, mode: 'insensitive' },
+    }),
+  },
+  orderBy: buildOrderBy(query),
+  select: { /* ... */ },
+});
+```
+
+**Sorting by a count is not a normal `orderBy`.** If you sort by vote count,
+Prisma needs the relation form:
+
+```ts
+// NOT { votes: 'desc' } - that is not a column.
+orderBy: query.sort === 'votes'
+  ? { votes: { _count: query.order } }
+  : { [query.sort]: query.order },
+```
+
+**Whatever you accept here, your `.http` file tests it.** A sort dropdown with
+no server support looks like a frontend bug and will cost you a day.
+
 **Step 4 - verify.** Copy `trip.http` into `activity.http`, change the URLs, and
 run every request. Check at minimum:
 
 - 200 with your list
 - 404 with a trip id you're not a member of
 - 401 with no `Authorization` header
-  Don't open the PR until those three pass.
+
+Don't open the PR until those three pass.
 
 ---
 
@@ -358,6 +410,9 @@ export function ActivitiesPage() {
   // ... toolbar, loading, error, empty, DataList
 }
 ```
+
+Every key in your defaults must be a query parameter your PR 1 controller
+already accepts. If it isn't, go back and add it there first.
 
 Use these shared components rather than writing your own:
 
@@ -558,12 +613,12 @@ in the same handler.
 item that no longer exists and shows you a 404.
 
 ```tsx
-actions={isOwner ? (
+actions={
   <>
     <button type="button" onClick={() => { onClose(); onEdit(activity); }}>Edit</button>
     <button type="button" onClick={() => setConfirmOpen(true)}>Delete</button>
   </>
-) : undefined}
+}
 ```
 
 ---
@@ -736,6 +791,16 @@ discover real trips.
 `ink-300` for borders, `ink-100` for subtle backgrounds. Never a raw hex or a
 default Tailwind colour like `blue-500`.
 
+**Any member can edit or delete anything inside a trip.** Activities,
+reservations, itinerary events, expenses - if you're on the trip, you can
+change it. Do not add a "only the person who created it" check, and do not hide
+Edit or Delete behind a role. The one exception is the trip itself: renaming,
+re-dating and deleting a trip are OWNER-only, which is why `tripRoutes.ts` is
+the only router with `requireTripRole('OWNER')` on some routes.
+
+If you think your feature needs a different rule, say so in the chat before you
+build it. Don't add the check and don't leave it out silently.
+
 ---
 
 ## 5. When something goes wrong
@@ -780,7 +845,49 @@ All four clean. Then:
 - [ ] Did you add an environment variable? Add the **key only** to
       `.env.example`, never the value
 - [ ] File header comments updated with today's date and what changed
+- [ ] Pull `main` and re-run the four commands above **after** merging it into
+      your branch. Your branch passing alone proves nothing if someone else
+      changed a shared file while you were working.
 
 **Open a draft PR within two days of starting a task**, even if it's one route
 stub. A half-finished draft PR can be redirected in five minutes. A week of
 silence can't.
+
+---
+
+## 7. What this document does not cover
+
+Sections 1-6 are the shape every feature shares: a list, a detail view, create,
+edit, delete. Roughly 80% of your work, and all of the parts where there is a
+right answer you can copy.
+
+The other 20% is what makes your feature yours, and it is **not** in here:
+
+| Feature                  | Not covered                                                              |
+| ------------------------ | ------------------------------------------------------------------------ |
+| Activities               | Voting - casting, changing and removing a vote, and the rules around it  |
+| Itinerary                | Scheduling an activity or reservation into a day/time slot               |
+| Activities, Reservations | Being schedulable from the itinerary                                     |
+| Expenses                 | Splitting a cost between members and settling who owes who               |
+| Members, Invitations     | Sending, accepting and revoking an invite; changing and removing members |
+
+**These are design decisions, not patterns**, which is why they are not in a
+conventions doc. Can you vote for the same activity twice? Does scheduling an
+activity copy its time or point at it? What happens to an expense when a member
+leaves? There is no "copy the Trip feature" answer, and two people guessing
+differently costs more than one person deciding once.
+
+**So you will get a short written spec from Josh for your extra piece before you start it.** One or two paragraphs - the rules, the endpoints, the shape of the
+data. Not a tutorial; sections 1-6 still tell you _how_ to build it.
+
+**Treat it as a sixth pull request.** Finish PRs 1-5 first. Your feature being
+complete and boring beats it being half-built and clever, and a vote button on
+a list that doesn't load yet is not progress.
+
+**Do not start the cross-feature integration.** Activities and reservations
+appearing in the itinerary touches three people's code at once, so it is
+sequenced after all five CRUD slices have landed, and Josh owns the seam. If
+your spec doesn't mention it, it isn't yours yet.
+
+**When you hit something this doc doesn't answer and there's no spec: stop and ask in the chat.** Do not invent it. Inventing it is how two features end up
+disagreeing about the same data, and that is a week to unpick.
