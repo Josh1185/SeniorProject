@@ -10,7 +10,8 @@
  *              Read this before writing activityController, reservationController,
  *              itineraryController or invitationController.
  *
- * LAST UPDATED: 2026-10-11 - Update listTrips to handle searching/filtering/sorting
+ * LAST UPDATED: 2026-10-16 - Add destination address and coordinates (Josh Iehle)
+ *               2026-10-11 - Update listTrips to handle searching/filtering/sorting
  *               2026-10-09 - File Created (Josh Iehle)
  */
 
@@ -208,6 +209,9 @@ export async function getTripById(req: Request, res: Response) {
       name: true,
       description: true,
       destination: true,
+      destinationAddress: true,
+      latitude: true,
+      longitude: true,
       startDate: true,
       endDate: true,
       createdAt: true,
@@ -268,6 +272,9 @@ export async function createTrip(req: Request, res: Response) {
       name: body.name,
       description: body.description,
       destination: body.destination,
+      destinationAddress: body.destinationAddress,
+      latitude: body.latitude,
+      longitude: body.longitude,
       startDate: toDateOnly(body.startDate),
       endDate: toDateOnly(body.endDate),
       createdById: req.user.id,
@@ -282,6 +289,9 @@ export async function createTrip(req: Request, res: Response) {
       name: true,
       description: true,
       destination: true,
+      destinationAddress: true,
+      latitude: true,
+      longitude: true,
       startDate: true,
       endDate: true,
       createdAt: true,
@@ -351,6 +361,9 @@ export async function updateTrip(req: Request, res: Response) {
       name: body.name,
       description: body.description,
       destination: body.destination,
+      destinationAddress: body.destinationAddress,
+      latitude: body.latitude,
+      longitude: body.longitude,
       startDate: body.startDate ? toDateOnly(body.startDate) : undefined,
       endDate: body.endDate ? toDateOnly(body.endDate) : undefined,
     },
@@ -359,6 +372,9 @@ export async function updateTrip(req: Request, res: Response) {
       name: true,
       description: true,
       destination: true,
+      destinationAddress: true,
+      latitude: true,
+      longitude: true,
       startDate: true,
       endDate: true,
       updatedAt: true,
