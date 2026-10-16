@@ -160,6 +160,9 @@ async function main() {
       name: 'Orlando Trip',
       description: 'Five days of theme parks and questionable food decisions.',
       destination: 'Orlando, FL',
+      destinationAddress: 'Orlando, FL, United States',
+      latitude: 28.5384,
+      longitude: -81.3789,
       startDate: dayFromNow(TRIP_START_OFFSET),
       endDate: dayFromNow(TRIP_END_OFFSET),
       members: {
