@@ -6,9 +6,13 @@
  *              mode toggle. Two routes means two shareable URLs and no
  *              branching inside the submit handler.
  *
- * LAST UPDATED: 2026-10-11 - Split from register, new layout (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - Keep the email on a failed sign in (Josh Iehle)
+ *               2026-10-11 - Split from register, new layout (Josh Iehle)
  *               2026-09-26 - File Created (Josh Iehle)
  */
+
+// -------------------- Type imports --------------------
+import type { FormState } from '../lib/formState';
 
 // -------------------- Module and lib imports --------------------
 import { useActionState } from 'react';
@@ -19,6 +23,18 @@ import { supabase } from '../lib/supabase';
 // -------------------- Component imports --------------------
 import { AuthLayout } from '../layouts/AuthLayout';
 import { TextField } from '../components/form/TextField';
+
+// -------------------- Form Values --------------------
+
+/**
+ * Only the email is carried across a failed submit.
+ *
+ * The password is deliberately NOT in here. Re-populating a password field
+ * means the value sits in React state and in a DOM attribute for as long as
+ * the page is open, and retyping it is no hardship when sign in has just
+ * failed.
+ */
+type LoginValues = { email: string };
 
 // -------------------- Component --------------------
 export function LoginPage() {
@@ -31,20 +47,24 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? '/dashboard';
 
   // ----- 2. Form action state -----
-  // useActionState replaces the usual trio of isPending / error / onSubmit.
-  // Whatever the action returns becomes the new `error` value.
-  const [error, submitAction, isPending] = useActionState(
-    async (_previousError: string | null, formData: FormData) => {
-      const email = String(formData.get('email') ?? '');
+  // Returns a FormState rather than a bare error string. React 19 resets the
+  // form after an action runs, so without the returned `values` the email box
+  // would clear every time a password was wrong. See lib/formState.ts.
+  const [state, submitAction, isPending] = useActionState(
+    async (
+      _previous: FormState<LoginValues>,
+      formData: FormData,
+    ): Promise<FormState<LoginValues>> => {
+      const email = String(formData.get('email') ?? '').trim();
       const password = String(formData.get('password') ?? '');
 
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
       // On success onAuthStateChange fires, AuthProvider updates, and the
       // <Navigate> below redirects. No manual navigation needed here.
-      return authError ? authError.message : null;
+      return { values: { email }, formError: authError?.message };
     },
-    null,
+    { values: { email: '' } },
   );
 
   // ----- 3. Redirect if already signed in -----
@@ -79,6 +99,7 @@ export function LoginPage() {
           type="email"
           required
           autoComplete="email"
+          defaultValue={state.values.email}
           placeholder="your_email@example.com"
         />
 
@@ -91,6 +112,7 @@ export function LoginPage() {
             autoComplete="current-password"
             placeholder="Enter your password"
           />
+
           <div className="mt-1 text-right">
             <Link
               to="/forgot-password"
@@ -101,9 +123,9 @@ export function LoginPage() {
           </div>
         </div>
 
-        {error && (
+        {state.formError && (
           <p role="alert" className="text-sm text-red-600">
-            {error}
+            {state.formError}
           </p>
         )}
 

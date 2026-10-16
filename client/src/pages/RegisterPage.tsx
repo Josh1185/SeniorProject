@@ -9,8 +9,12 @@
  *              request. Drop it and every new user shows up as the local part
  *              of their email address.
  *
- * LAST UPDATED: 2026-10-11 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - Keep name and email on a failed submit (Josh Iehle)
+ *               2026-10-11 - File Created (Josh Iehle)
  */
+
+// -------------------- Type imports --------------------
+import type { FormState } from '../lib/formState';
 
 // -------------------- Module and lib imports --------------------
 import { useActionState } from 'react';
@@ -22,38 +26,53 @@ import { supabase } from '../lib/supabase';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { TextField } from '../components/form/TextField';
 
+// -------------------- Form Values --------------------
+
+/** Passwords are deliberately not carried across a failed submit. */
+type RegisterValues = { fullName: string; email: string };
+
 // -------------------- Component --------------------
 export function RegisterPage() {
   // ----- 1. Session state -----
   const { session, loading } = useAuth();
 
   // ----- 2. Form action state -----
-  const [error, submitAction, isPending] = useActionState(
-    async (_previousError: string | null, formData: FormData) => {
-      const fullName = String(formData.get('fullName') ?? '').trim();
-      const email = String(formData.get('email') ?? '');
+  // Returns a FormState rather than a bare error string, so a mismatched
+  // password confirmation no longer wipes the name and email. See
+  // lib/formState.ts for why React 19 makes that necessary.
+  const [state, submitAction, isPending] = useActionState(
+    async (
+      _previous: FormState<RegisterValues>,
+      formData: FormData,
+    ): Promise<FormState<RegisterValues>> => {
+      const values = {
+        fullName: String(formData.get('fullName') ?? '').trim(),
+        email: String(formData.get('email') ?? '').trim(),
+      };
+
       const password = String(formData.get('password') ?? '');
       const confirmPassword = String(formData.get('confirmPassword') ?? '');
 
       // Checked here rather than by the browser: there is no HTML attribute
-      // for "must equal that other field".
+      // for "must equal that other field". A field error rather than a form
+      // one, so the message lands under the box that has to change.
       if (password !== confirmPassword) {
-        return 'Passwords do not match';
+        return { values, fieldErrors: { confirmPassword: 'Passwords do not match' } };
       }
 
       const { error: authError } = await supabase.auth.signUp({
-        email,
+        email: values.email,
         password,
         options: {
           // Becomes user_metadata on the JWT. See the file header - the server
           // reads full_name to set displayName.
-          data: { full_name: fullName },
+          data: { full_name: values.fullName },
         },
       });
 
-      return authError ? authError.message : null;
+      return { values, formError: authError?.message };
     },
-    null,
+    { values: { fullName: '', email: '' } },
   );
 
   // ----- 3. Redirect if already signed in -----
@@ -86,6 +105,7 @@ export function RegisterPage() {
           type="text"
           required
           autoComplete="name"
+          defaultValue={state.values.fullName}
           placeholder="Enter your full name"
         />
 
@@ -95,6 +115,7 @@ export function RegisterPage() {
           type="email"
           required
           autoComplete="email"
+          defaultValue={state.values.email}
           placeholder="your_email@example.com"
         />
 
@@ -115,12 +136,13 @@ export function RegisterPage() {
           required
           minLength={6}
           autoComplete="new-password"
+          error={state.fieldErrors?.confirmPassword}
           placeholder="Confirm your password"
         />
 
-        {error && (
+        {state.formError && (
           <p role="alert" className="text-sm text-red-600">
-            {error}
+            {state.formError}
           </p>
         )}
 
