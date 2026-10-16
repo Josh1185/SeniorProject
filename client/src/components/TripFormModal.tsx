@@ -22,7 +22,7 @@ import { toDateInputValue } from '../lib/format';
 // -------------------- Component imports --------------------
 import { DestinationInput } from './DestinationInput';
 import { Modal } from './Modal';
-import { TextField } from './TextField';
+import { TextField } from './form/TextField';
 
 // -------------------- Props interface --------------------
 interface TripFormModalProps {

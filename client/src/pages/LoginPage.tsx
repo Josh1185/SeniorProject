@@ -18,7 +18,7 @@ import { supabase } from '../lib/supabase';
 
 // -------------------- Component imports --------------------
 import { AuthLayout } from '../layouts/AuthLayout';
-import { TextField } from '../components/TextField';
+import { TextField } from '../components/form/TextField';
 
 // -------------------- Component --------------------
 export function LoginPage() {
