@@ -100,6 +100,78 @@ describe('createTripSchema', () => {
       expect(result.error.issues[0]?.path).toEqual(['endDate']);
     }
   });
+
+  // ----- Destination address and coordinates -----
+
+  it('accepts a destination with an address and coordinates', () => {
+    const result = createTripSchema.safeParse({
+      ...VALID_TRIP,
+      destinationAddress: 'Orlando, FL, United States',
+      latitude: 28.5384,
+      longitude: -81.3789,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a destination with no address or coordinates', () => {
+    // Typing "Grandma's cabin" is a legitimate destination that no geocoder
+    // has heard of, so all three must stay optional.
+    expect(createTripSchema.safeParse(VALID_TRIP).success).toBe(true);
+  });
+
+  it('accepts explicit nulls', () => {
+    const result = createTripSchema.safeParse({
+      ...VALID_TRIP,
+      destinationAddress: null,
+      latitude: null,
+      longitude: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a latitude with no longitude', () => {
+    // Half a coordinate cannot be mapped, so it is a client bug, not a
+    // partial success.
+    const result = createTripSchema.safeParse({ ...VALID_TRIP, latitude: 28.5384 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a longitude with no latitude', () => {
+    const result = createTripSchema.safeParse({ ...VALID_TRIP, longitude: -81.3789 });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an out-of-range latitude', () => {
+    // 91 is not a latitude. Catching it here is what stops a transposed
+    // lat/lng pair pinning the map in the Arctic.
+    const result = createTripSchema.safeParse({
+      ...VALID_TRIP,
+      latitude: 91,
+      longitude: -81.3789,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects an out-of-range longitude', () => {
+    const result = createTripSchema.safeParse({
+      ...VALID_TRIP,
+      latitude: 28.5384,
+      longitude: 181,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a coordinate sent as a string', () => {
+    // The client sends JSON, so a real number arrives as a number. A string
+    // means something built the request wrong, and a silent coercion would
+    // hide that.
+    const result = createTripSchema.safeParse({
+      ...VALID_TRIP,
+      latitude: '28.5384',
+      longitude: '-81.3789',
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 // -------------------- Update Schema --------------------
@@ -136,6 +208,32 @@ describe('updateTripSchema', () => {
 
   it('still enforces field-level rules', () => {
     expect(updateTripSchema.safeParse({ name: '' }).success).toBe(false);
+  });
+
+  // ----- Destination address and coordinates -----
+
+  it('accepts clearing the coordinates with explicit nulls', () => {
+    // This is the request that removes a map pin: the destination was re-typed
+    // by hand, so the old coordinates must go. `null` is what makes Prisma
+    // write NULL rather than skip the column.
+    const result = updateTripSchema.safeParse({ latitude: null, longitude: null });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts updating both coordinates together', () => {
+    const result = updateTripSchema.safeParse({ latitude: 28.5384, longitude: -81.3789 });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects updating one coordinate alone', () => {
+    // Moving one axis would leave the pin somewhere nobody chose.
+    expect(updateTripSchema.safeParse({ latitude: 28.5384 }).success).toBe(false);
+  });
+
+  it('leaves the coordinates alone when neither is in the request', () => {
+    // Both absent is not the same as one absent - a PATCH that only renames
+    // the trip must not trip the paired-coordinate rule.
+    expect(updateTripSchema.safeParse({ name: 'Renamed Trip' }).success).toBe(true);
   });
 });
 

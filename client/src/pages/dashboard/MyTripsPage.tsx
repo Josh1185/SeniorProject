@@ -4,31 +4,54 @@
  *
  *              FILTER STATE LIVES IN THE URL, not useState. `?search=orlando`
  *              survives a refresh, works with the back button, and can be
- *              pasted to a teammate. useSearchParams makes that about as cheap
- *              as local state.
+ *              pasted to a teammate.
  *
- *              The search INPUT is still local state, synced to the URL after
- *              a pause. Writing a URL param per keystroke would spam history
- *              and make typing feel laggy.
+ *              All of that plumbing - reading and writing params, the debounced
+ *              search box, dropping a param when it is back to its default -
+ *              now lives in useListQueryState. This page declares its params
+ *              and their defaults and nothing else.
  *
- * LAST UPDATED: 2026-10-13 - Real list, filters, create modal (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - Extract useListQueryState (Josh Iehle)
+ *               2026-10-13 - Real list, filters, create modal (Josh Iehle)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
-// -------------------- Module and lib imports --------------------
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { useTrips } from '../../hooks/trips/useTrips';
-import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-
 // -------------------- Type imports --------------------
 import type { TripFilters } from '../../services/tripService';
+
+// -------------------- Module and lib imports --------------------
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
+
+// -------------------- Hook imports --------------------
+import { useListQueryState } from '../../hooks/useListQueryState';
+import { useTrips } from '../../hooks/trips/useTrips';
 
 // -------------------- Component imports --------------------
 import { EmptyState } from '../../components/list/EmptyState';
 import { ListToolbar } from '../../components/list/ListToolbar';
 import { TripFormModal } from '../../components/TripFormModal';
 import { TripList } from '../../components/dashboard/TripList';
+
+// -------------------- List State Defaults --------------------
+
+/**
+ * Every param this page owns, and its default.
+ *
+ * This object is the single source of truth for the list's URL contract: the
+ * keys ARE the query-string keys, and a value equal to its default is kept out
+ * of the URL entirely.
+ *
+ * At module scope, not inline in the hook call - useListQueryState freezes the
+ * first object it is given, and a module-level constant makes that obvious
+ * rather than surprising.
+ */
+const TRIP_LIST_DEFAULTS = {
+  search: '',
+  status: '',
+  role: '',
+  sort: 'startDate:asc',
+};
 
 // -------------------- Filter Options --------------------
 
@@ -57,103 +80,73 @@ const SORT_OPTIONS = [
   { value: 'name:desc', label: 'Sort: Name Z-A' },
 ];
 
+// -------------------- Internal Helpers --------------------
+
+/**
+ * Unpacks "startDate:asc" into the two params the API takes.
+ *
+ * The fallbacks are not defensive padding: `split` is an indexed read, so under
+ * noUncheckedIndexedAccess both halves are possibly undefined, and a
+ * hand-edited URL really can contain `?sort=nonsense`. Falling back to the
+ * default beats sending `undefined` and getting a 422.
+ */
+function unpackSort(packed: string) {
+  const [sort = 'startDate', order = 'asc'] = packed.split(':');
+  return { sort, order };
+}
+
 // -------------------- Component --------------------
 export function MyTripsPage() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
 
-  // ----- 1. Read filters out of the URL -----
-  const search = searchParams.get('search') ?? '';
-  const status = searchParams.get('status') ?? '';
-  const role = searchParams.get('role') ?? '';
-  const sortParam = searchParams.get('sort') ?? 'startDate:asc';
-  const [sort, order] = sortParam.split(':');
+  // ----- 1. List state, from the URL -----
+  const list = useListQueryState({ defaults: TRIP_LIST_DEFAULTS });
+  const { sort, order } = unpackSort(list.values.sort);
 
-  // ----- 2. Keep the search box responsive -----
-  // Local state so typing is instant, debounced into the URL so we are not
-  // pushing a history entry and refetching on every keypress.
-  const [searchInput, setSearchInput] = useState(search);
-  const debouncedSearch = useDebouncedValue(searchInput, 350);
-
-  const [lastSearchParam, setLastSearchParam] = useState(search);
-
-  if (search !== lastSearchParam) {
-    setLastSearchParam(search);
-    setSearchInput(search);
-  }
-
-  useEffect(() => {
-    if (debouncedSearch !== searchInput) return;
-
-    // Nothing to do if the URL already agrees - without this guard the effect
-    // would write the same value back and loop.
-    if (searchInput === search) return;
-
-    setSearchParams(
-      (previous) => {
-        const next = new URLSearchParams(previous);
-        if (searchInput) next.set('search', searchInput);
-        else next.delete('search');
-        return next;
-      },
-      // Typing should not bury the previous page under a dozen history
-      // entries, so each keystroke replaces rather than pushes.
-      { replace: true },
-    );
-  }, [debouncedSearch, searchInput, search, setSearchParams]);
-
-  /** Writes one filter to the URL, clearing it when the value is empty. */
-  function setFilter(key: string, value: string) {
-    setSearchParams((previous) => {
-      const next = new URLSearchParams(previous);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      return next;
-    });
-  }
-
-  // ----- 3. Fetch -----
+  // ----- 2. Fetch -----
   // The filters object is the query key, so changing any dropdown refetches
   // automatically and React Query caches each combination separately.
+  //
+  // `list.values.search` is the URL-committed value, not what is in the box -
+  // which is exactly what should drive the query. The box's own value is
+  // list.searchInput and it changes on every keystroke.
   const filters: TripFilters = {
-    search: search || undefined,
-    status: (status || undefined) as TripFilters['status'],
-    role: (role || undefined) as TripFilters['role'],
+    search: list.values.search || undefined,
+    status: (list.values.status || undefined) as TripFilters['status'],
+    role: (list.values.role || undefined) as TripFilters['role'],
     sort: sort as TripFilters['sort'],
     order: order as TripFilters['order'],
   };
 
   const trips = useTrips(filters);
-
-  const hasFilters = Boolean(search || status || role);
   const results = trips.data?.trips ?? [];
 
-  // ----- 4. Render -----
+  // ----- 3. Render -----
   return (
     <div>
       <ListToolbar
-        searchValue={searchInput}
-        onSearchChange={setSearchInput}
+        searchValue={list.searchInput}
+        onSearchChange={list.setSearchInput}
         searchPlaceholder="Search trips…"
         selects={[
           {
             name: 'Status',
-            value: status,
+            value: list.values.status,
             options: STATUS_OPTIONS,
-            onChange: (value) => setFilter('status', value),
+            onChange: (value) => list.setValue('status', value),
           },
           {
             name: 'Role',
-            value: role,
+            value: list.values.role,
             options: ROLE_OPTIONS,
-            onChange: (value) => setFilter('role', value),
+            onChange: (value) => list.setValue('role', value),
           },
           {
             name: 'Sort',
-            value: sortParam,
+            value: list.values.sort,
             options: SORT_OPTIONS,
-            onChange: (value) => setFilter('sort', value),
+            onChange: (value) => list.setValue('sort', value),
           },
         ]}
         action={
@@ -191,17 +184,20 @@ export function MyTripsPage() {
           // your filter" need different words and a different call to action -
           // telling someone with 30 trips that they have no trips is confusing.
           <EmptyState
-            title={hasFilters ? 'No trips match those filters' : 'No trips yet'}
+            title={list.isFiltered ? 'No trips match those filters' : 'No trips yet'}
             description={
-              hasFilters
+              list.isFiltered
                 ? 'Try clearing the search or changing the filters.'
                 : 'Create your first trip to start planning with your group.'
             }
             action={
-              hasFilters ? (
+              list.isFiltered ? (
                 <button
                   type="button"
-                  onClick={() => setSearchParams({})}
+                  // list.reset() rather than setSearchParams({}) - it clears
+                  // only this list's params, so an unrelated one on the URL
+                  // survives.
+                  onClick={list.reset}
                   className="cursor-pointer rounded-md border border-ink-300 px-4 py-2 text-sm font-medium text-ink-900 duration-150 hover:bg-ink-100"
                 >
                   Clear filters

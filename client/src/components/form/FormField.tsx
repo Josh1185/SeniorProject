@@ -5,7 +5,7 @@
  *              It does NOT render an input. It renders everything AROUND one
  *              and hands back the ids the control needs to be accessible:
  *
- *                <FormField label="Trip Name" required>
+ *                <FormField label="Trip Name" required error={fieldErrors?.name}>
  *                  {({ id, describedBy, invalid }) => (
  *                    <input id={id} aria-describedby={describedBy}
  *                           aria-invalid={invalid} />
@@ -13,43 +13,29 @@
  *                </FormField>
  *
  *              The render-function shape exists because `aria-describedby` has
- *              to point at ids that FormField generates, and the control is the
- *              thing that carries the attribute. Passing plain children would
- *              mean every caller inventing its own ids and getting it subtly
- *              wrong.
+ *              to point at ids that FormField generates, while the control is
+ *              the thing that carries the attribute. Passing plain children
+ *              would mean every caller inventing its own ids and getting it
+ *              subtly wrong.
  *
  *              YOU PROBABLY DO NOT USE THIS DIRECTLY. TextField, TextArea and
- *              DateTimeInput wrap it. Reach for FormField when you are wrapping
- *              something custom - LocationPicker does exactly that.
+ *              DateTimeInput wrap it. Reach for it when wrapping something
+ *              custom, like an autocomplete.
  *
- * LAST UPDATED: 2026-10-15 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
 import type { ReactNode } from 'react';
+import type { FieldRenderProps } from './fieldStyles';
 
 // -------------------- Module and lib imports --------------------
 import { useId } from 'react';
 
-// -------------------- Types --------------------
-
-/** What FormField hands to the control it wraps. */
-export interface FieldRenderProps {
-  /** Put this on the control. The <label> already points at it. */
-  id: string;
-  /**
-   * Put this on the control as `aria-describedby`. Undefined when there is
-   * no hint and no error, which is the correct value for the attribute -
-   * an empty string would announce nothing but still be present.
-   */
-  describedBy: string | undefined;
-  /** Put this on the control as `aria-invalid`. */
-  invalid: boolean;
-}
-
+// -------------------- Props interface --------------------
 interface FormFieldProps {
   label: string;
-  /** Shows the required marker AND is not passed to the control - do that yourself. */
+  /** Shows the required marker. Pass `required` to the control separately. */
   required?: boolean;
   /** Quiet helper text under the label. */
   hint?: string;
@@ -60,8 +46,8 @@ interface FormFieldProps {
 
 // -------------------- Component --------------------
 export function FormField({ label, required, hint, error, children }: FormFieldProps) {
-  // useId is stable across renders and unique per instance, so two of the
-  // same field on one page cannot collide.
+  // useId is stable across renders and unique per instance, so two of the same
+  // field on one page cannot collide.
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -72,6 +58,9 @@ export function FormField({ label, required, hint, error, children }: FormFieldP
 
   return (
     <div className="block">
+      {/* htmlFor rather than wrapping the input inside the label. Both
+          associate the two, but an explicit id also lets aria-describedby and
+          aria-activedescendant point at the control from elsewhere. */}
       <label htmlFor={id} className="block text-sm font-medium text-ink-900">
         {label}
         {required && (

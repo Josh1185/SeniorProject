@@ -68,7 +68,7 @@ export function createApp() {
 
   // -------------------- 422 ZodError Route Handler (Validation Errors) --------------------
   app.use(
-    (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    (err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
       // Validation failures are the caller's fault, not ours. 422 with
       // field-level detail so a form can highlight exactly what to fix.
       if (err instanceof ZodError) {
@@ -81,8 +81,7 @@ export function createApp() {
         });
       }
 
-      console.error(err);
-      res.status(500).json({/* ...unchanged... */});
+      next(err);
     },
   );
 

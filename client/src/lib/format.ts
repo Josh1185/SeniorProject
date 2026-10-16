@@ -42,3 +42,15 @@ export function toDateInputValue(value: string | undefined | null): string {
   if (!value) return '';
   return value.split('T')[0] ?? '';
 }
+
+/**
+ * 1250 -> "$12.50". Takes CENTS, always - the whole codebase stores integer
+ * cents, and a function that silently accepted dollars would be a quiet
+ * hundred-fold bug.
+ */
+export function formatCents(cents: number): string {
+  return (cents / 100).toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  });
+}

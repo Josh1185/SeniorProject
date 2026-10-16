@@ -10,12 +10,34 @@
  *              Every feature module should follow this shape:
  *              schemas/<feature>Schemas.ts + schemas/<feature>Schemas.test.ts
  *
- * LAST UPDATED: 2026-10-11 - Add list query schema (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - Add destination address and coordinates (Josh Iehle)
+ *               2026-10-11 - Add list query schema (Josh Iehle)
  *               2026-10-09 - File Created (Josh Iehle)
  */
 
 // -------------------- Module imports --------------------
 import { z } from 'zod';
+
+// -------------------- Cross-Field Rules --------------------
+
+/**
+ * Latitude and longitude are meaningless on their own, so they travel together.
+ *
+ * `== null` rather than `=== null` on purpose: it is true for null AND
+ * undefined, which is exactly the distinction that does NOT matter here. Both
+ * absent passes, both present passes, one of each fails.
+ *
+ * Shared by the create and update schemas below rather than written twice,
+ * because a rule defined in two places is a rule that will disagree with
+ * itself.
+ */
+const coordinatesPaired = (data: { latitude?: number | null; longitude?: number | null }) =>
+  (data.latitude == null) === (data.longitude == null);
+
+const coordinatesPairedError = {
+  message: 'Latitude and longitude must be provided together',
+  path: ['latitude'],
+};
 
 // -------------------- Shared Field Definitions --------------------
 
@@ -32,6 +54,23 @@ const tripFields = z.object({
   description: z.string().trim().max(2000).optional(),
   destination: z.string().trim().min(1, 'Destination is required').max(200),
 
+  // ----- The destination's address and coordinates -----
+  // Filled in when the destination is picked from a geocode search; left empty
+  // when it is typed by hand. All three are therefore nullable AND optional,
+  // and those two mean different things on a PATCH: `undefined` leaves the
+  // column alone, `null` clears it. Both are legitimate requests.
+  //
+  // z.number(), not z.coerce.number(): the client sends JSON, so a coordinate
+  // arrives as a real number. A string here means something built the request
+  // wrong, and that is worth a 422 rather than a silent coercion.
+  //
+  // The bounds are real-world latitude and longitude, so a transposed pair -
+  // 81 and 28 the wrong way round - is caught here rather than pinning the map
+  // in the Arctic.
+  destinationAddress: z.string().trim().max(300).nullable().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+
   // z.iso.date() accepts YYYY-MM-DD only, which is what a @db.Date column
   // stores. Accepting a full timestamp here would invite timezone bugs
   startDate: z.iso.date(),
@@ -47,10 +86,12 @@ const tripFields = z.object({
  * Comparing YYYY-MM-DD strings lexicographically is the same as comparing the
  * dates, which avoids parsing entirely.
  */
-export const createTripSchema = tripFields.refine((data) => data.endDate >= data.startDate, {
-  message: 'End date must be on or after the start date',
-  path: ['endDate'],
-});
+export const createTripSchema = tripFields
+  .refine((data) => data.endDate >= data.startDate, {
+    message: 'End date must be on or after the start date',
+    path: ['endDate'],
+  })
+  .refine(coordinatesPaired, coordinatesPairedError);
 
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 
@@ -60,7 +101,7 @@ export type CreateTripInput = z.infer<typeof createTripSchema>;
  * PATCH /api/trips/:tripId
  *
  * Every field optional (PATCH is a partial update, never a full replacement),
- * with two rules layered on top.
+ * with three rules layered on top.
  */
 export const updateTripSchema = tripFields
   .partial()
@@ -79,7 +120,12 @@ export const updateTripSchema = tripFields
       message: 'End date must be on or after the start date',
       path: ['endDate'],
     },
-  );
+  )
+  // Unlike the dates, this one is NOT re-checked against stored values in the
+  // controller. The client always sets both coordinates together or clears
+  // both together, so a request carrying one without the other is a client bug
+  // worth rejecting outright rather than merging.
+  .refine(coordinatesPaired, coordinatesPairedError);
 
 export type UpdateTripInput = z.infer<typeof updateTripSchema>;
 

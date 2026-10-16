@@ -40,3 +40,27 @@ track and split expenses, store reservations, and see locations on a map.
 typescript-eslint does not yet support TypeScript 7. Prisma stays on 7 rather
 than 8 for ecosystem compatibility. Tailwind 4 has no `tailwind.config.js` -
 theming lives in a CSS `@theme` block. React Compiler is deliberately not used.
+
+## Building a feature
+
+**[docs/conventions.md](docs/conventions.md)** - read this before you write any
+code. It walks through the four pull requests that make up a feature (read API,
+write API, read UI, write UI), tells you which Trip file to copy for each one,
+and has a troubleshooting table for the errors you will actually hit.
+
+The Trip feature is the reference implementation. Everything you need already
+exists there.
+
+## Environment variables
+
+Copy the examples and fill in the values:
+
+```bash
+cp server/.env.example server/.env
+cp client/.env.example client/.env
+```
+
+`client/.env` needs `VITE_MAPBOX_TOKEN`. Ask Josh for it - do not commit it.
+
+Anything prefixed `VITE_` is compiled into the browser bundle and is **public**.
+Never put a secret behind a `VITE_` name.
