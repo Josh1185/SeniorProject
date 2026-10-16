@@ -12,7 +12,8 @@
  *              sidebar has no Settings entry. Both are OWNER-only in the UI;
  *              the server enforces it for real via requireTripRole('OWNER').
  *
- * LAST UPDATED: 2026-10-13 - Hooks, owner actions, date fix (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - Member initials via Avatar (Josh Iehle)
+ *               2026-10-13 - Hooks, owner actions, date fix (Josh Iehle)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
@@ -27,6 +28,7 @@ import { useTrip } from '../../hooks/trips/useTrip';
 import { formatDateRange } from '../../lib/format';
 
 // -------------------- Component imports --------------------
+import { Avatar } from '../../components/Avatar';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TripFormModal } from '../../components/TripFormModal';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
@@ -156,7 +158,14 @@ export function OverviewPage() {
                 className="flex items-center justify-between rounded-md border border-ink-300 px-3 py-2"
               >
                 <div className="flex items-center gap-2">
-                  <div aria-hidden="true" className="h-8 w-8 shrink-0 rounded-full bg-ink-200" />
+                  {/* Initials rather than an empty grey circle. Profile picture
+                      upload is out of scope, so avatarUrl is null for almost
+                      everyone and the fallback IS the normal case. */}
+                  <Avatar
+                    displayName={member.user.displayName}
+                    avatarUrl={member.user.avatarUrl}
+                    size="sm"
+                  />
                   <span className="text-sm text-ink-900">{member.user.displayName}</span>
                 </div>
                 <span className="text-xs text-ink-700">{member.role}</span>
