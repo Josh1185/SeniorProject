@@ -48,15 +48,15 @@ again whenever you're unsure:
 
 **Client**
 
-| File                                         | What it is                  |
-| -------------------------------------------- | --------------------------- |
-| `client/src/types/api.ts`                    | response shapes             |
-| `client/src/services/tripService.ts`         | the fetch calls             |
-| `client/src/lib/queryKeys.ts`                | cache keys                  |
-| `client/src/hooks/trips/*.ts`                | one file per query/mutation |
-| `client/src/pages/dashboard/MyTripsPage.tsx` | a list page                 |
-| `client/src/pages/trip/OverviewPage.tsx`     | a detail view's layout      |
-| `client/src/lib/format.ts` | formatter utils for money/date displays |
+| File                                         | What it is                              |
+| -------------------------------------------- | --------------------------------------- |
+| `client/src/types/api.ts`                    | response shapes                         |
+| `client/src/services/tripService.ts`         | the fetch calls                         |
+| `client/src/lib/queryKeys.ts`                | cache keys                              |
+| `client/src/hooks/trips/*.ts`                | one file per query/mutation             |
+| `client/src/pages/dashboard/MyTripsPage.tsx` | a list page                             |
+| `client/src/pages/trip/OverviewPage.tsx`     | a detail view's layout                  |
+| `client/src/lib/format.ts`                   | formatter utils for money/date displays |
 
 Every example below uses **Activities** (Brandon's feature). Swap the names for
 yours.
@@ -210,7 +210,7 @@ const activities = await prisma.activity.findMany({
     }),
   },
   orderBy: buildOrderBy(query),
-  select: { /* ... */ },
+  select: {/* ... */},
 });
 ```
 
