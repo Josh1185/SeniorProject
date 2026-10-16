@@ -11,13 +11,15 @@
  *              for the FormState pattern. If you are building
  *              ActivityFormModal or ReservationFormModal, copy this shape.
  *
- * LAST UPDATED: 2026-10-16 - Shared form components; keep values on error (Josh Iehle)
+ * LAST UPDATED: 2026-10-16 - LocationPicker; store destination coordinates (Josh Iehle)
+ *               2026-10-16 - Shared form components; keep values on error (Josh Iehle)
  *               2026-10-13 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
 import type { TripDetail } from '../types/api';
 import type { FormState } from '../lib/formState';
+import type { LocationValue } from '../lib/location';
 
 // -------------------- Module and lib imports --------------------
 import { useActionState, useState } from 'react';
@@ -25,9 +27,10 @@ import { useCreateTrip } from '../hooks/trips/useCreateTrip';
 import { useUpdateTrip } from '../hooks/trips/useUpdateTrip';
 import { toDateInputValue } from '../lib/format';
 import { readFormValues } from '../lib/formState';
+import { emptyLocation } from '../lib/location';
 
 // -------------------- Component imports --------------------
-import { DestinationInput } from './DestinationInput';
+import { LocationPicker } from './LocationPicker';
 import { Modal } from './Modal';
 import { DateTimeInput } from './form/DateTimeInput';
 import { TextArea } from './form/TextArea';
@@ -55,6 +58,18 @@ const FIELD_NAMES = ['name', 'startDate', 'endDate', 'description'] as const;
 
 type TripFormValues = Record<(typeof FIELD_NAMES)[number], string>;
 
+/** The destination of the trip being edited, as a LocationValue. */
+function initialLocation(trip: TripDetail | undefined): LocationValue {
+  if (!trip) return emptyLocation;
+
+  return {
+    label: trip.destination,
+    fullAddress: trip.destinationAddress,
+    latitude: trip.latitude,
+    longitude: trip.longitude,
+  };
+}
+
 /** The values a form starts with: the trip being edited, or blank. */
 function initialValues(trip: TripDetail | undefined): TripFormValues {
   return {
@@ -72,8 +87,8 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
   // ----- 1. Controlled state for the destination -----
   // The other fields are uncontrolled and read from FormData on submit. The
   // destination has to be controlled because the autocomplete writes to it
-  // programmatically when someone picks a suggestion.
-  const [destination, setDestination] = useState(trip?.destination ?? '');
+  // programmatically - and it writes three values at once, not just the text.
+  const [destination, setDestination] = useState<LocationValue>(() => initialLocation(trip));
 
   // ----- 2. Mutations -----
   const createTrip = useCreateTrip();
@@ -89,18 +104,17 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
       formData: FormData,
     ): Promise<FormState<TripFormValues>> => {
       const values = readFormValues(formData, FIELD_NAMES);
-      const trimmedDestination = destination.trim();
+      const trimmedDestination = destination.label.trim();
 
       // ----- Client-side checks -----
       // These duplicate the server's rules on purpose: the server is the real
       // guard, this just saves a round trip and points at the right field.
       // Everything the browser can enforce on its own - required, maxLength -
       // is an attribute on the control instead of a check here.
-      // A form-level message rather than a field one, because DestinationInput
-      // does not take an `error` prop yet. When it is replaced by a picker
-      // built on FormField, this becomes a fieldError like the date one below.
+      // A field error now that LocationPicker is built on FormField, so the
+      // message lands under the box that has to change.
       if (!trimmedDestination) {
-        return { values, formError: 'Destination is required.' };
+        return { values, fieldErrors: { destination: 'Destination is required.' } };
       }
 
       // String comparison, not Date parsing. Both are YYYY-MM-DD, and comparing
@@ -114,9 +128,15 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
       }
 
       // ----- Submit -----
+      // The picker's parts map onto the Trip columns here. A trip's
+      // destination IS the picked place, so the label goes straight in - see
+      // lib/location.ts for how the other three tables differ.
       const body = {
         name: values.name,
         destination: trimmedDestination,
+        destinationAddress: destination.fullAddress,
+        latitude: destination.latitude,
+        longitude: destination.longitude,
         startDate: values.startDate,
         endDate: values.endDate,
         description: values.description || undefined,
@@ -170,12 +190,16 @@ export function TripFormModal({ open, onClose, trip, onCreated }: TripFormModalP
           placeholder="Enter your trip name"
         />
 
-        <DestinationInput
+        <LocationPicker
           label="Main Destination"
           name="destination"
+          searchFor="destination"
+          required
           value={destination}
           onChange={setDestination}
-          required
+          error={state.fieldErrors?.destination}
+          placeholder="Select your main destination"
+          hint="Pick a result to store its coordinates. Typing your own is fine too."
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
