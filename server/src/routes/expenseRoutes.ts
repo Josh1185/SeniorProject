@@ -6,13 +6,16 @@
  */
 
 // -------------------- Module Imports --------------------
-import { Router } from "express";
+import { Router } from 'express';
 
 // -------------------- Controller Imports --------------------
+import { listExpenses, getExpenseById } from '../controllers/expenseController';
 
 // -------------------- Router Instance --------------------
 export const expenseRouter = Router({ mergeParams: true });
 
 // -------------------- Collection Routes --------------------
+expenseRouter.get('/', listExpenses);
 
 // -------------------- Single Expense Routes --------------------
+expenseRouter.get('/:expenseId', getExpenseById);
