@@ -11,6 +11,7 @@ import { prisma } from '../lib/prisma';
 import { listActivitiesQuerySchema } from '../schemas/activitySchemas';
 import unauthorized from '../utils/unauthorized';
 import badRequest from '../utils/badRequest';
+import notFound from '../utils/notFound';
 
 // -------------------- List Activities --------------------
 export async function listActivities(req: Request, res: Response) {
@@ -85,4 +86,72 @@ export async function listActivities(req: Request, res: Response) {
   });
 
   res.json({ activities: payload });
+}
+
+// -------------------- Get Activity Details --------------------
+export async function getActivityById(req: Request, res: Response) {
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  const tripId = req.params.tripId;
+  const activityId = req.params.activityId;
+  const userId = req.user.id;
+
+  // Make sure both URL parameters are valid strings.
+  if (typeof tripId !== 'string' || !tripId) {
+    return badRequest(res, 'Trip ID is required');
+  }
+
+  if (typeof activityId !== 'string' || !activityId) {
+    return badRequest(res, 'Activity ID is required');
+  }
+  // Find this activity only if it belongs to the requested trip.
+  const activity = await prisma.activity.findFirst({
+    where: {
+      id: activityId,
+      tripId,
+    },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      suggestedDateTime: true,
+      locationName: true,
+      locationAddress: true,
+      latitude: true,
+      longitude: true,
+      estimatedCostCents: true,
+      createdAt: true,
+      createdBy: {
+        select: {
+          id: true,
+          displayName: true,
+        },
+      },
+      _count: {
+        select: {
+          votes: true,
+        },
+      },
+      votes: {
+        where: { userId },
+        select: { id: true },
+      },
+    },
+  });
+
+  if (!activity) {
+    return notFound(res, 'Activity not found');
+  }
+  // Convert the vote data into fields the frontend can use.
+  const { _count, votes, ...activityData } = activity;
+
+  res.json({
+    activity: {
+      ...activityData,
+      voteCount: _count.votes,
+      hasVoted: votes.length > 0,
+    },
+  });
 }
