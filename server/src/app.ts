@@ -3,7 +3,8 @@
  * DESCRIPTION: Builds and returns the Express app without starting a server
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
  *
- * LAST UPDATED: 2026-10-10 - Add trip module routes (Josh Iehle)
+ * LAST UPDATED: 2026-10-18 - Add expense module routes (Josh Iehle)
+ *               2026-10-10 - Add trip module routes (Josh Iehle)
  *               2026-09-24 - Add user module routes (Josh Iehle)
  *               2026-09-08 - File Created (Josh Iehle)
  */
@@ -25,6 +26,7 @@ import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
 import { activityRouter } from './routes/activityRoutes';
+import { expenseRouter } from './routes/expenseRoutes';
 
 // -------------------- createApp Function --------------------
 export function createApp() {
@@ -63,6 +65,9 @@ export function createApp() {
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
   app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
+
+  // Protected Trip Routes (requires auth and trip role)
+  app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {

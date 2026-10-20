@@ -1,0 +1,238 @@
+###############################################################################
+# FILE: expense.http
+# DESCRIPTION: Manual request tests for the expense module. Run with the
+#              VS Code REST Client extension (humao.rest-client).
+#
+#              Every request below has an expected status in its comment.
+#              The PR is not ready until every one of them returns what its
+#              comment says - including the ones that are supposed to fail.
+#
+#              Run them top to bottom. The sign-in at the top sets the token
+#              that every later request uses; if you start in the middle you
+#              will get a 401 and think something is broken.
+#
+# LAST UPDATED: 2026-10-18 - File Created (Josh Iehle)
+###############################################################################
+
+# -------------------- Variables --------------------
+# Copy the Supabase values from your server/.env. Everything else you fill in
+# after the first two requests below.
+
+@baseUrl = http://localhost:4000/api
+@supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
+@supabaseKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
+
+@email = josh@abc.com
+@password = test1234
+
+# A trip you ARE a member of, and an expense on it.
+@tripId = 01a1568d-45db-70de-9115-291ebacf0bc3
+@expenseId = 00000000-0000-7000-8000-10000000aaaa
+
+# A trip you are NOT a member of, and an expense that belongs to it.
+# Get these from db:studio while signed in as a different account. These two
+# are what make the scoping tests real - without them you are only testing
+# the happy path.
+@otherTripId = 00000000-0000-7000-8000-00000000aaaa
+@otherTripExpenseId = 01a1451b-b31c-73af-969b-6e17f73db219
+
+
+###############################################################################
+# 0. SETUP
+###############################################################################
+
+### Sign in. Expect 200. Everything below depends on this.
+# @name signIn
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{supabaseKey}}
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+@token = {{signIn.response.body.access_token}}
+
+### List your trips, to get a tripId. Expect 200.
+GET {{baseUrl}}/trips
+Authorization: Bearer {{token}}
+
+
+###############################################################################
+# 1. LIST - happy path
+###############################################################################
+
+### Expect 200 and { "expenses": [...] }.
+# Each item: id, title, expenseDate, amountCents, paidBy { id, displayName },
+# participantCount. Check amountCents is an INTEGER - 6200, never 62.00.
+GET {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+
+### Default order. Expect 200, newest expenseDate first.
+# This is the opposite of the trip list, which is soonest-first. Confirm it
+# by eye before moving on - a wrong default is invisible until someone
+# complains the list "looks random".
+GET {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+
+### Search. Expect 200 and only expenses whose title contains the term.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=gas
+Authorization: Bearer {{token}}
+
+### Search is case-insensitive. Expect 200 and the SAME rows as the request above.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=GAS
+Authorization: Bearer {{token}}
+
+### Partial match. Expect 200 - "ga" must match "Gas".
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=ga
+Authorization: Bearer {{token}}
+
+### Search matching nothing. Expect 200 and { "expenses": [] }.
+# An empty list, NOT a 404. Nothing was missing; nothing matched.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=zzzznotathing
+Authorization: Bearer {{token}}
+
+### Sort by title ascending. Expect 200, alphabetical.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?sort=title&order=asc
+Authorization: Bearer {{token}}
+
+### Sort by creation order. Expect 200.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?sort=createdAt&order=asc
+Authorization: Bearer {{token}}
+
+### Search and sort together. Expect 200.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=a&sort=title&order=desc
+Authorization: Bearer {{token}}
+
+
+###############################################################################
+# 2. LIST - empty and malformed query params
+#
+# These are the ones that break in the browser rather than in testing: a
+# <select> reset to its placeholder sends an empty param, and if the schema
+# rejects it the whole list 422s the moment a user clears a filter.
+###############################################################################
+
+### Empty params. Expect 200 with the DEFAULTS applied, not a 422.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=&sort=&order=
+Authorization: Bearer {{token}}
+
+### Whitespace-only search. Expect 200 and the full list, not zero rows.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=%20%20%20
+Authorization: Bearer {{token}}
+
+### Unknown sort column. Expect 422.
+# This is a security test, not a validation nicety. Without the enum, `sort`
+# is interpolated into an orderBy and the caller picks any column on the table.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?sort=amountCents
+Authorization: Bearer {{token}}
+
+### Unknown order direction. Expect 422.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?order=sideways
+Authorization: Bearer {{token}}
+
+### Over-long search term. Expect 422 naming the `search` field.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?search=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+Authorization: Bearer {{token}}
+
+### Unknown param. Expect 200 - Zod strips it, it is not an error.
+# A stale bookmark carrying ?page=2 should still return a list.
+GET {{baseUrl}}/trips/{{tripId}}/expenses?page=2
+Authorization: Bearer {{token}}
+
+
+###############################################################################
+# 3. DETAIL - happy path
+###############################################################################
+
+### One expense. Expect 200 and { "expense": { ... } }.
+#
+# Check by hand, every time:
+#   - participants[].shareCents SUM TO EXACTLY amountCents
+#   - every participant has user { id, displayName }
+#   - activity and reservation are null, or at most ONE of them is set
+#   - expenseDate is a date, and description may be null
+#
+# The sum is the one that matters. If the shares do not add up, the balances
+# feature built on top of this will never reconcile, and the cause will be
+# three PRs behind you by the time anyone notices.
+GET {{baseUrl}}/trips/{{tripId}}/expenses/{{expenseId}}
+Authorization: Bearer {{token}}
+
+
+###############################################################################
+# 4. DETAIL - scoping and missing records
+#
+# THE MOST IMPORTANT SECTION IN THIS FILE.
+#
+# requireTripRole() proves the caller is a member of the trip named in the
+# URL. It does NOT prove the expense in the URL belongs to that trip. If the
+# controller looks the expense up by its id alone, any member of any trip can
+# read any expense in the database by pairing their own tripId with someone
+# else's expenseId.
+###############################################################################
+
+### An expense id that does not exist. Expect 404, NOT 500.
+# A 500 here means the controller used findUniqueOrThrow: its P2025 reaches
+# the error handler, which only knows how to turn Zod errors into 422s.
+GET {{baseUrl}}/trips/{{tripId}}/expenses/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+### A malformed expense id. Expect 404.
+GET {{baseUrl}}/trips/{{tripId}}/expenses/not-a-real-id
+Authorization: Bearer {{token}}
+
+### >>> A REAL expense, from a trip you are NOT a member of, requested
+### >>> through a trip you ARE a member of. Expect 404.
+#
+# If this returns 200 with the expense body, the endpoint leaks every expense
+# in the database and the PR must not be merged. The fix is both ids in the
+# where clause:  findFirst({ where: { id: expenseId, tripId } })
+GET {{baseUrl}}/trips/{{tripId}}/expenses/{{otherTripExpenseId}}
+Authorization: Bearer {{token}}
+
+### The same expense through its OWN trip, which you are not in. Expect 404.
+# requireTripRole() stops this one before the controller runs. 404 rather
+# than 403 is deliberate - a 403 would confirm the trip exists.
+GET {{baseUrl}}/trips/{{otherTripId}}/expenses/{{otherTripExpenseId}}
+Authorization: Bearer {{token}}
+
+### Listing expenses on a trip you are not a member of. Expect 404.
+GET {{baseUrl}}/trips/{{otherTripId}}/expenses
+Authorization: Bearer {{token}}
+
+
+###############################################################################
+# 5. AUTHENTICATION
+###############################################################################
+
+### No Authorization header. Expect 401.
+GET {{baseUrl}}/trips/{{tripId}}/expenses
+
+### Malformed token. Expect 401.
+GET {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer not.a.real.token
+
+### No bearer scheme. Expect 401.
+GET {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: {{token}}
+
+### No auth on the detail route either. Expect 401, not 404.
+# Order matters: the auth check must run before anything looks at ids.
+GET {{baseUrl}}/trips/{{tripId}}/expenses/{{expenseId}}
+
+
+###############################################################################
+# 6. BEFORE YOU OPEN THE PR
+#
+#   [ ] Every request above returned the status in its comment
+#   [ ] The out-of-trip expense request returned 404, not 200
+#   [ ] A nonexistent id returned 404, not 500
+#   [ ] Empty query params returned 200, not 422
+#   [ ] participants[].shareCents summed exactly to amountCents
+#   [ ] amountCents is an integer everywhere in every response
+#   [ ] npm run typecheck && npm run lint && npm test --workspace=server
+#   [ ] Merged main into the branch and ran all four again
+###############################################################################
