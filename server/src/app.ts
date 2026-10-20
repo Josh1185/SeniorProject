@@ -25,7 +25,6 @@ import { requireTripRole } from './middleware/tripRole';
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
-import { activityRouter } from './routes/activityRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 
 // -------------------- createApp Function --------------------
@@ -64,7 +63,6 @@ export function createApp() {
   // Protected routes (requires auth)
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
-  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
 
   // Protected Trip Routes (requires auth and trip role)
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
