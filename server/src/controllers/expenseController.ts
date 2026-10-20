@@ -24,10 +24,7 @@ import notFound from '../utils/notFound';
 /**
  * Builds the Prisma `orderBy` for a validated sort option.
  */
-function buildExpenseOrderBy(
-  sort: ListExpensesQuery['sort'],
-  order: ListExpensesQuery['order'],
-) {
+function buildExpenseOrderBy(sort: ListExpensesQuery['sort'], order: ListExpensesQuery['order']) {
   switch (sort) {
     case 'title':
       return { title: order };
