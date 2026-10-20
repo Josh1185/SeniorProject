@@ -2,7 +2,8 @@
  * FILE: expenseController.ts
  * DESCRIPTION: Endpoint controllers for the expense module.
  *
- * LAST UPDATED: 2026-10-18 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-10-19 - Add Delete Expense Controller (Josh Iehle)
+ *               2026-10-18 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
@@ -178,4 +179,41 @@ export async function getExpenseById(req: Request, res: Response) {
 
   // ----- 6. Respond with formatted expense data -----
   res.json({ expense });
+}
+
+// -------------------- DELETE /api/trips/:tripId/expenses/:expenseId --------------------
+
+/**
+ * Deletes an expense. NOT mounted behind requireTripRole('OWNER').
+ */
+export async function deleteExpense(req: Request, res: Response) {
+  // ----- 1. Check that the user is mounted to the request -----
+  // requireAuth middleware guarantees this, but TypeScript can't know that, so we check
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve both ids from the req params -----
+  const tripId = req.params.tripId;
+  const expenseId = req.params.expenseId;
+
+  // ----- 3. Validate that both IDs exist as strings -----
+  if (typeof tripId !== 'string') {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  if (typeof expenseId !== 'string') {
+    return badRequest(res, 'Missing expense id');
+  }
+
+  // ----- 4. Delete the expense record -----
+  await prisma.expense.delete({
+    where: {
+      tripId: tripId,
+      id: expenseId,
+    },
+  });
+
+  // ----- 5. Respond with a 204 -----
+  res.status(204).end();
 }
