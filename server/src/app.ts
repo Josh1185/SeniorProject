@@ -18,11 +18,13 @@ import { env } from './env';
 
 // -------------------- Middleware imports --------------------
 import { requireAuth } from './middleware/auth';
+import { requireTripRole } from './middleware/tripRole';
 
 // -------------------- Router Imports --------------------
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
+import { activityRouter } from './routes/activityRoutes';
 
 // -------------------- createApp Function --------------------
 export function createApp() {
@@ -60,6 +62,7 @@ export function createApp() {
   // Protected routes (requires auth)
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
+  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
