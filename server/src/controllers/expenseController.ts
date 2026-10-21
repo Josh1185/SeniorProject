@@ -217,5 +217,3 @@ export async function deleteExpense(req: Request, res: Response) {
   // ----- 5. Respond with a 204 -----
   res.status(204).end();
 }
-
-console.log("hello");
