@@ -1,0 +1,27 @@
+@supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
+@publishableKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
+@baseUrl = http://localhost:4000/api
+@tripId = 01a156e4-c875-714e-b4c0-3650e55bb3c6
+@activityId = 01a15711-ab86-71d4-9230-1cdfca83c681
+
+### Sign in as the test user
+# @name signin
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "brandon@example.com",
+  "password": "YOUR_PASSWORD_HERE"
+}
+
+###
+@token = {{signin.response.body.access_token}}
+
+### List activities for a trip
+GET {{baseUrl}}/trips/{{tripId}}/activities
+Authorization: Bearer {{token}}
+
+### Get details for one activity
+GET {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}
+Authorization: Bearer {{token}}
