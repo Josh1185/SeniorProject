@@ -106,9 +106,12 @@ describe('splitEqually', () => {
 
 describe('sumShares', () => {
   it('totals the shares', () => {
-    expect(sumShares([{ userId: 'a', shareCents: 2067 }, { userId: 'b', shareCents: 2066 }])).toBe(
-      4133,
-    );
+    expect(
+      sumShares([
+        { userId: 'a', shareCents: 2067 },
+        { userId: 'b', shareCents: 2066 },
+      ]),
+    ).toBe(4133);
   });
 
   it('returns zero for no shares', () => {

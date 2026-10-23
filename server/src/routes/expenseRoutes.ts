@@ -10,14 +10,22 @@
 import { Router } from 'express';
 
 // -------------------- Controller Imports --------------------
-import { listExpenses, getExpenseById, deleteExpense } from '../controllers/expenseController';
+import {
+  listExpenses,
+  getExpenseById,
+  deleteExpense,
+  createExpense,
+  updateExpense,
+} from '../controllers/expenseController';
 
 // -------------------- Router Instance --------------------
 export const expenseRouter = Router({ mergeParams: true });
 
 // -------------------- Collection Routes --------------------
 expenseRouter.get('/', listExpenses);
+expenseRouter.post('/', createExpense);
 
 // -------------------- Single Expense Routes --------------------
 expenseRouter.get('/:expenseId', getExpenseById);
+expenseRouter.patch('/:expenseId', updateExpense);
 expenseRouter.delete('/:expenseId', deleteExpense);

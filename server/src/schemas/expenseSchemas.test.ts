@@ -133,9 +133,9 @@ describe('createExpenseSchema', () => {
   });
 
   it('rejects a malformed date', () => {
-    expect(createExpenseSchema.safeParse({ ...validExpense, expenseDate: '11/12/2026' }).success).toBe(
-      false,
-    );
+    expect(
+      createExpenseSchema.safeParse({ ...validExpense, expenseDate: '11/12/2026' }).success,
+    ).toBe(false);
   });
 
   it('accepts an expense date outside the trip range', () => {
