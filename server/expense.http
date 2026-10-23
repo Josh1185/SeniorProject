@@ -36,6 +36,9 @@
 @otherTripId = 00000000-0000-7000-8000-00000000aaaa
 @otherTripExpenseId = 01a1451b-b31c-73af-969b-6e17f73db219
 
+@memberId = 7e2391f1-fe94-4ca1-bcec-132efa02c34c
+@outsiderId = 01a1451b-b2f8-75be-8b89-a649757dafd7
+
 
 ###############################################################################
 # 0. SETUP
@@ -203,9 +206,408 @@ Authorization: Bearer {{token}}
 GET {{baseUrl}}/trips/{{otherTripId}}/expenses
 Authorization: Bearer {{token}}
 
+###############################################################################
+# 5. CREATE - happy path
+#
+# After every create, check the response by hand:
+#   - participants[].shareCents SUM TO EXACTLY amountCents
+#   - amountCents came back as an integer
+#   - participants[].user has both id and displayName
+###############################################################################
+
+### Three-way split of $62.00. Expect 201.
+#
+# The shares MUST be 2067, 2067, 2066 - in that order, summing to 6200.
+# If you see 2066.67, or three 2067s summing to 6201, the split is rounding
+# instead of distributing the remainder and every balance built on it will
+# be wrong by cents that nobody can trace.
+# @name createdExpense
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Gas",
+  "description": "Fill-up on the drive down",
+  "amountCents": 6200,
+  "expenseDate": "2026-11-12",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}"]
+}
+
+###
+@newExpenseId = {{createdExpense.response.body.expense.id}}
+
+### Minimal body - no description. Expect 201, description null.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Parking",
+  "amountCents": 1500,
+  "expenseDate": "2026-11-13",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}"]
+}
+
+### A payer who is NOT a participant. Expect 201.
+# Paying for a meal you did not eat is legitimate, and it is exactly the
+# imbalance that settlement exists to resolve. Do not "fix" this.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Treated the group",
+  "amountCents": 4500,
+  "expenseDate": "2026-11-14",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}"]
+}
+
+### An amount that does not divide evenly. Expect 201.
+# 1 cent between N people: the first person pays it, everyone else pays 0.
+# Odd-looking, arithmetically correct, and the sum is still exact.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Rounding edge case",
+  "amountCents": 1,
+  "expenseDate": "2026-11-14",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}"]
+}
+
+### An expense dated before the trip starts. Expect 201.
+# Deliberately allowed: a flight booked months ahead is a real expense on a
+# real date.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Flights booked early",
+  "amountCents": 48000,
+  "expenseDate": "2026-08-01",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}"]
+}
+
 
 ###############################################################################
-# 5. AUTHENTICATION
+# 6. CREATE - validation
+#
+# Every one of these must be a 422 with error.details naming the field. If any
+# returns 201, the bad value reached the database.
+###############################################################################
+
+### Missing title. Expect 422.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "amountCents": 1000, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### Whitespace-only title. Expect 422 - trim runs before min(1).
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "   ", "amountCents": 1000, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### >>> DOLLARS INSTEAD OF CENTS. Expect 422.
+# The single most likely client bug in this whole module. 62.50 must never
+# reach the database - it would store 62 cents and nothing would flag it.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Dinner", "amountCents": 62.50, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### Amount as a string. Expect 422 - no coercion on purpose.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Dinner", "amountCents": "6200", "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### Zero amount. Expect 422.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Free", "amountCents": 0, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### Negative amount. Expect 422.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Refund", "amountCents": -500, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### Amount beyond a Postgres Int. Expect 422, NOT 500.
+# Without the max() bound Postgres raises an out-of-range error and this
+# surfaces as a server crash instead of a field-level message.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Too big", "amountCents": 2147483648, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### A timestamp where a date belongs. Expect 422.
+# @db.Date stores a day, not an instant. Accepting a timestamp is how dates
+# land a day early for anyone west of Greenwich.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Dinner", "amountCents": 1000, "expenseDate": "2026-11-12T00:00:00.000Z", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### Empty participant list. Expect 422.
+# splitEqually would divide by zero.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Nobody", "amountCents": 1000, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": [] }
+
+### Duplicate participant. Expect 422, NOT 500.
+# A 500 means the duplicate reached Prisma and tripped
+# @@unique([expenseId, userId]) as a P2002.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Twice", "amountCents": 1000, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}", "{{memberId}}"] }
+
+### Client-supplied shares. Expect 201, and the shares IGNORED.
+# The server computes the split. Confirm the response shares are the real
+# even split, not the 999999 sent here - Zod strips unknown keys.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Nice try",
+  "amountCents": 3000,
+  "expenseDate": "2026-11-12",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}"],
+  "shares": [{ "userId": "{{memberId}}", "shareCents": 999999 }]
+}
+
+
+###############################################################################
+# 6b. CREATE - membership scoping
+#
+# THE SECURITY SECTION FOR THIS PR, and the direct sequel to PR 1's.
+#
+# requireTripRole() proved the CALLER belongs to this trip. It says nothing
+# about the people the caller just named as payer and participants. Without
+# the membership check, any member can attach a stranger to an expense -
+# putting them into this trip's balances and exposing their display name
+# through the detail endpoint.
+###############################################################################
+
+### >>> A participant who is NOT a member of this trip. Expect 400.
+# A 201 here means the endpoint will attach any user in the database to this
+# trip's finances, and the PR must not be merged.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Stranger",
+  "amountCents": 1000,
+  "expenseDate": "2026-11-12",
+  "paidById": "{{memberId}}",
+  "participantIds": ["{{memberId}}", "{{outsiderId}}"]
+}
+
+### >>> A payer who is NOT a member of this trip. Expect 400.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Stranger paid",
+  "amountCents": 1000,
+  "expenseDate": "2026-11-12",
+  "paidById": "{{outsiderId}}",
+  "participantIds": ["{{memberId}}"]
+}
+
+### A participant id that does not exist at all. Expect 400, NOT 500.
+# A 500 means it reached Prisma and failed the foreign key.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Ghost",
+  "amountCents": 1000,
+  "expenseDate": "2026-11-12",
+  "paidById": "{{memberId}}",
+  "participantIds": ["00000000-0000-7000-8000-000000000000"]
+}
+
+### Creating on a trip you are not a member of. Expect 404.
+POST {{baseUrl}}/trips/{{otherTripId}}/expenses
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Not mine", "amountCents": 1000, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+### No auth. Expect 401.
+POST {{baseUrl}}/trips/{{tripId}}/expenses
+Content-Type: application/json
+
+{ "title": "Anonymous", "amountCents": 1000, "expenseDate": "2026-11-12", "paidById": "{{memberId}}", "participantIds": ["{{memberId}}"] }
+
+
+###############################################################################
+# 7. UPDATE
+#
+# The re-split is what this section exists to prove. After EVERY patch below,
+# check that participants[].shareCents still sums to amountCents. An update
+# that changes the money without rebuilding the shares leaves a row that
+# looks perfectly fine and quietly breaks every balance derived from it.
+###############################################################################
+
+### Title only. Expect 200, shares UNCHANGED.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Gas and snacks" }
+
+### >>> Amount only. Expect 200 and a RE-SPLIT against the stored participants.
+# Change 6200 to 7500 and the shares must become 2500/2500/2500 for three
+# people - summing to 7500, not still summing to 6200.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "amountCents": 7500 }
+
+### >>> Participants only. Expect 200 and a RE-SPLIT against the stored amount.
+# Dropping to fewer people must redistribute the SAME total between them.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "participantIds": ["{{memberId}}"] }
+
+### Both at once. Expect 200, shares sum to the new amount.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "amountCents": 10000, "participantIds": ["{{memberId}}"] }
+
+### Clearing the description with null. Expect 200, description null.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "description": null }
+
+### Changing the payer. Expect 200.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "paidById": "{{memberId}}" }
+
+### Empty body. Expect 422.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### Fractional amount. Expect 422 - every base rule survives .partial().
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "amountCents": 75.50 }
+
+### Duplicate participants. Expect 422.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "participantIds": ["{{memberId}}", "{{memberId}}"] }
+
+### >>> Adding a non-member. Expect 400.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "participantIds": ["{{memberId}}", "{{outsiderId}}"] }
+
+### An expense id that does not exist. Expect 404, NOT 500.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/00000000-0000-7000-8000-000000000000
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Ghost" }
+
+### >>> An expense belonging to a trip you are not in. Expect 404.
+# Same leak as PR 1, on the write side: without tripId in the where clause
+# this edits someone else's expense.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{otherTripExpenseId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "Should not be editable" }
+
+### No auth. Expect 401.
+PATCH {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Content-Type: application/json
+
+{ "title": "Anonymous" }
+
+
+###############################################################################
+# 7b. DELETE
+###############################################################################
+
+### Delete the expense created above. Expect 204 with an empty body.
+DELETE {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+
+### >>> Delete the SAME expense again. Expect 404, NOT 500.
+# This is the bug `delete` introduces and `deleteMany` fixes. Prisma's delete
+# throws P2025 when nothing matches, and the error handler only knows how to
+# turn Zod errors into 422s - so a double-click on a delete button reads as a
+# server crash.
+DELETE {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+
+### An id that never existed. Expect 404, NOT 500.
+DELETE {{baseUrl}}/trips/{{tripId}}/expenses/00000000-0000-7000-8000-000000000000
+Authorization: Bearer {{token}}
+
+### >>> An expense belonging to a trip you are not in. Expect 404.
+# A 204 here means you just deleted someone else's expense.
+DELETE {{baseUrl}}/trips/{{tripId}}/expenses/{{otherTripExpenseId}}
+Authorization: Bearer {{token}}
+
+### Confirm it is really gone. Expect 404.
+GET {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+Authorization: Bearer {{token}}
+
+### No auth. Expect 401.
+DELETE {{baseUrl}}/trips/{{tripId}}/expenses/{{newExpenseId}}
+
+
+###############################################################################
+# 8. AUTHENTICATION
 ###############################################################################
 
 ### No Authorization header. Expect 401.
@@ -222,17 +624,3 @@ Authorization: {{token}}
 ### No auth on the detail route either. Expect 401, not 404.
 # Order matters: the auth check must run before anything looks at ids.
 GET {{baseUrl}}/trips/{{tripId}}/expenses/{{expenseId}}
-
-
-###############################################################################
-# 6. BEFORE YOU OPEN THE PR
-#
-#   [ ] Every request above returned the status in its comment
-#   [ ] The out-of-trip expense request returned 404, not 200
-#   [ ] A nonexistent id returned 404, not 500
-#   [ ] Empty query params returned 200, not 422
-#   [ ] participants[].shareCents summed exactly to amountCents
-#   [ ] amountCents is an integer everywhere in every response
-#   [ ] npm run typecheck && npm run lint && npm test --workspace=server
-#   [ ] Merged main into the branch and ran all four again
-###############################################################################
