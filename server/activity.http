@@ -1,8 +1,8 @@
 @supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
 @publishableKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
 @baseUrl = http://localhost:4000/api
-@tripId = 01a156e4-c875-714e-b4c0-3650e55bb3c6
-@activityId = 01a15711-ab86-71d4-9230-1cdfca83c681
+@tripId = 01a16f29-4653-75cd-b7f9-f8778b234509
+@activityId = 01a155b5-9516-7684-b1ab-2b030805acea
 
 ### Sign in as the test user
 # @name signin
@@ -11,8 +11,8 @@ apikey: {{publishableKey}}
 Content-Type: application/json
 
 {
-  "email": "brandon@example.com",
-  "password": "YOUR_PASSWORD_HERE"
+  "email": "joshlaptop@example.com",
+  "password": "test1234"
 }
 
 ###

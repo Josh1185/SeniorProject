@@ -64,10 +64,10 @@ export function createApp() {
   // Protected routes (requires auth)
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
-  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
 
   // Protected Trip Routes (requires auth and trip role)
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
+  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
