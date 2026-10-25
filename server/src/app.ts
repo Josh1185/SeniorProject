@@ -1,9 +1,10 @@
+
 /**
  * FILE: app.ts
  * DESCRIPTION: Builds and returns the Express app without starting a server
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
  *
- * LAST UPDATED: 2026-10-25 - Register member routes before 404 handler
+ * LAST UPDATED: 2026-10-25 - Add member module routes (Yahya Nawaz)
  *               2026-10-18 - Add expense module routes (Josh Iehle)
  *               2026-10-10 - Add trip module routes (Josh Iehle)
  *               2026-09-24 - Add user module routes (Josh Iehle)
@@ -26,7 +27,6 @@ import { requireTripRole } from './middleware/tripRole';
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
-import { activityRouter } from './routes/activityRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 import { memberRouter } from './routes/memberRoutes';
 
@@ -35,48 +35,52 @@ export function createApp() {
   const app = express();
 
   // -------------------- Middleware --------------------
+  /**
+   * Express runs these top to bottom for every request,
+   * so security headers land before anything else touches the request,
+   * and the body is parse before any routes try to read it
+   */
 
-  // Security headers
+  // Sets a batch of security-related HTTP headers (no config necessary)
   app.use(helmet());
 
-  // Cross-origin requests
+  // Lets the browser call this API from a different origin
+  // 'credentials: true' allows cookies/auth headers across origins
   app.use(cors({ origin: env.WEB_ORIGIN, credentials: true }));
 
-  // Parse JSON request bodies
+  // Parses JSON request bodies into req.body.
+  // The limit caps payload size so that someone can't POST a 2GB body and exhaust memory
   app.use(express.json({ limit: '1mb' }));
 
-  // Request logging (disabled in tests)
+  // Request logging. Skipped in testing/qa to limit unnecessary output
   if (env.NODE_ENV !== 'test') app.use(morgan('dev'));
 
   // -------------------- Routers --------------------
+  /**
+   * Routers for each feature-set in the app
+   */
 
-  // Public health check
+  // Server health checks
   app.use('/api/health', healthRouter);
 
-  // Protected routes
+  // Protected routes (requires auth)
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
 
-  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
-
+  // Protected Trip Routes (requires auth and trip role)
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
-
-  // Members routes must be registered before the 404 handler.
   app.use('/api/trips/:tripId/members', requireAuth, requireTripRole(), memberRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
-    res.status(404).json({
-      error: {
-        code: 'NOT_FOUND',
-        message: 'Route not found',
-      },
-    });
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
 
-  // -------------------- 422 ZodError Route Handler --------------------
+  // -------------------- 422 ZodError Route Handler (Validation Errors) --------------------
   app.use(
     (err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+      // Validation failures are the caller's fault, not ours. 422 with
+      // field-level detail so a form can highlight exactly what to fix.
       if (err instanceof ZodError) {
         return res.status(422).json({
           error: {
@@ -91,11 +95,10 @@ export function createApp() {
     },
   );
 
-  // -------------------- 500 Internal Error Handler --------------------
+  // -------------------- 500 Interal Error Route Handler --------------------
   app.use(
     (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       console.error(err);
-
       res.status(500).json({
         error: {
           code: 'INTERNAL_ERROR',
