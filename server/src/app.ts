@@ -1,4 +1,3 @@
-
 /**
  * FILE: app.ts
  * DESCRIPTION: Builds and returns the Express app without starting a server

@@ -8,8 +8,7 @@
 import { z } from 'zod';
 
 // Treat empty URL parameters as if they were not provided.
-const emptyToUndefined = (value: unknown) =>
-  value === '' ? undefined : value;
+const emptyToUndefined = (value: unknown) => (value === '' ? undefined : value);
 
 // Validate the options sent when requesting a list of activities.
 export const listActivitiesQuerySchema = z.object({
@@ -23,20 +22,12 @@ export const listActivitiesQuerySchema = z.object({
 
   // Choose which activity field to sort by.
   // Default to the date the activity was created.
-  sort: z.preprocess(
-    emptyToUndefined,
-    z.enum(['name', 'votes', 'createdAt']).default('createdAt'),
-  ),
+  sort: z.preprocess(emptyToUndefined, z.enum(['name', 'votes', 'createdAt']).default('createdAt')),
 
   // Choose ascending or descending order.
   // Default to descending (newest or highest first).
-  order: z.preprocess(
-    emptyToUndefined,
-    z.enum(['asc', 'desc']).default('desc'),
-  ),
+  order: z.preprocess(emptyToUndefined, z.enum(['asc', 'desc']).default('desc')),
 });
 
 // Reuse the validated query type in our activity controller.
-export type ListActivitiesQuery = z.infer<
-  typeof listActivitiesQuerySchema
->;
+export type ListActivitiesQuery = z.infer<typeof listActivitiesQuerySchema>;
