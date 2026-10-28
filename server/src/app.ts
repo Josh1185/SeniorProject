@@ -37,7 +37,7 @@ export function createApp() {
 
   // -------------------- Middleware --------------------
   /**
-   * Express runs these top to bottom for every request,s
+   * Express runs these top to bottom for every request
    * so security headers land before anything else touches the request,
    * and the body is parse before any routes try to read it
    */
@@ -72,12 +72,7 @@ export function createApp() {
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
 
   // Reservations routes (requires auth and trip role)
-  app.use(
-    '/api/trips/:tripId/reservations',
-    requireAuth,
-    requireTripRole(),
-    reservationRouter,
-  );
+  app.use('/api/trips/:tripId/reservations', requireAuth, requireTripRole(), reservationRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {

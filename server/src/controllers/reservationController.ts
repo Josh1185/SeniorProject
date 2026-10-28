@@ -1,6 +1,8 @@
 /**
  * FILE: reservationController.ts
  * DESCRIPTION: Endpoint controllers for the reservation module.
+ *
+ * LAST UPDATED: 2026-10-28 - File Created (Antony Benitez)
  */
 
 // -------------------- Type Imports --------------------
@@ -8,7 +10,6 @@ import type { Request, Response } from 'express';
 
 // -------------------- Module Imports --------------------
 import { prisma } from '../lib/prisma';
-import { z } from 'zod';
 
 // -------------------- Schema Imports --------------------
 import {
@@ -37,28 +38,33 @@ function buildReservationOrderBy(
   }
 }
 
-// -------------------- GET Reservations --------------------
+// -------------------- GET /api/trips/:tripId/reservations --------------------
 
+/**
+ * Every reservation associated with the provided trip, with optional search, filter, and sort
+ */
 export async function listReservations(req: Request, res: Response) {
-  // Check that the user is signed in
+  // ----- 1. Check that the user is mounted to the request -----
+  // requireAuth middleware guarantees this, but TypeScript can't know that, so we check
   if (!req.user) {
     return unauthorized(res, 'Not signed in');
   }
 
-  // Get the trip ID from the URL
+  // ----- 3. Retrieve the trip id from the req params -----
   const tripId = req.params.tripId;
 
+  // ----- 3. Validate that the trip ID exists as a string -----
   if (typeof tripId !== 'string') {
     return badRequest(res, 'Missing trip id');
   }
 
-  // Validate search, type, and sorting parameters
+  // ----- 4. Validate the query string -----
   const query = listReservationsQuerySchema.parse(req.query);
 
-  // Retrieve reservations belonging to the trip
+  // ----- 5. Search for all reservations associated with the trip -----
   const reservations = await prisma.reservation.findMany({
     where: {
-      tripId,
+      tripId: tripId,
 
       // Filter reservations by type
       ...(query.type ? { type: query.type } : {}),
@@ -88,22 +94,23 @@ export async function listReservations(req: Request, res: Response) {
     orderBy: buildReservationOrderBy(query.sort, query.order),
   });
 
-  // Return the reservations as JSON
+  // ----- 6. Respond with data -----
   res.json({ reservations });
 }
 
-// -------------------- GET Single Reservation --------------------
+// -------------------- GET /api/trips/:tripId/reservations/:reservationId --------------------
 
 export async function getReservationById(req: Request, res: Response) {
-  // Check that the user is signed in
+  // ----- 1. Check that the user is mounted to the request -----
   if (!req.user) {
     return unauthorized(res, 'Not signed in');
   }
 
-  // Get the trip ID and reservation ID from the URL
+  // ----- 2. Retrieve both ids from the req params -----
   const tripId = req.params.tripId;
   const reservationId = req.params.reservationId;
 
+  // ----- 3. Validate that both IDs exist as strings -----
   if (typeof tripId !== 'string') {
     return badRequest(res, 'Missing trip id');
   }
@@ -112,12 +119,7 @@ export async function getReservationById(req: Request, res: Response) {
     return badRequest(res, 'Missing reservation id');
   }
 
-  // Check that the reservation ID is a valid UUID
-  if (!z.uuid().safeParse(reservationId).success) {
-    return notFound(res, 'Reservation not found');
-  }
-
-  // Find the reservation belonging to this trip
+  // ----- 4. Search for the reservation record using BOTH ids -----
   const reservation = await prisma.reservation.findFirst({
     where: {
       id: reservationId,
@@ -142,11 +144,11 @@ export async function getReservationById(req: Request, res: Response) {
     },
   });
 
-  // Return 404 if the reservation was not found
+  // ----- 5. Missing OR out-of-trip reservation is a 404 -----
   if (!reservation) {
     return notFound(res, 'Reservation not found');
   }
 
-  // Return the reservation as JSON
+  // ----- 6. Respond with formatted reservation data -----
   res.json({ reservation });
 }
