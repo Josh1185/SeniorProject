@@ -25,6 +25,7 @@ import { requireTripRole } from './middleware/tripRole';
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
+import { activityRouter } from './routes/activityRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 
 // -------------------- createApp Function --------------------
@@ -66,6 +67,7 @@ export function createApp() {
 
   // Protected Trip Routes (requires auth and trip role)
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
+  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
