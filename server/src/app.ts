@@ -23,7 +23,8 @@ import { requireAuth } from './middleware/auth';
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
-
+import { requireTripRole } from './middleware/tripRole';
+import { itineraryRouter } from './routes/itineraryRoutes';
 // -------------------- createApp Function --------------------
 export function createApp() {
   const app = express();
@@ -60,7 +61,7 @@ export function createApp() {
   // Protected routes (requires auth)
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
-
+  app.use('/api/trips/:tripId/itinerary', requireAuth, requireTripRole(), itineraryRouter);
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

@@ -1,0 +1,4 @@
+
+### Get itinerary for a trip
+GET http://localhost:4000/api/trips/01a18a42-1c86-72ca-82a2-f868d8cb2f9e/itinerary
+Authorization: Bearer <YOUR_ACCESS_TOKEN>
