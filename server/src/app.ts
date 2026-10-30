@@ -4,6 +4,7 @@
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
  *
  * LAST UPDATED: 2026-10-25 - Add member module routes (Yahya Nawaz)
+ * LAST UPDATED: 2026-10-28 - Add reservation module routes (Antony Benitez)
  *               2026-10-18 - Add expense module routes (Josh Iehle)
  *               2026-10-10 - Add trip module routes (Josh Iehle)
  *               2026-09-24 - Add user module routes (Josh Iehle)
@@ -29,13 +30,16 @@ import { tripRouter } from './routes/tripRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 import { memberRouter } from './routes/memberRoutes';
 
+// Reservations module routes
+import { reservationRouter } from './routes/reservationRoutes';
+
 // -------------------- createApp Function --------------------
 export function createApp() {
   const app = express();
 
   // -------------------- Middleware --------------------
   /**
-   * Express runs these top to bottom for every request,
+   * Express runs these top to bottom for every request
    * so security headers land before anything else touches the request,
    * and the body is parse before any routes try to read it
    */
@@ -69,6 +73,10 @@ export function createApp() {
   // Protected Trip Routes (requires auth and trip role)
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
   app.use('/api/trips/:tripId/members', requireAuth, requireTripRole(), memberRouter);
+  app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
+
+  // Reservations routes (requires auth and trip role)
+  app.use('/api/trips/:tripId/reservations', requireAuth, requireTripRole(), reservationRouter);
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
