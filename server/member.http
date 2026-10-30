@@ -1,0 +1,58 @@
+
+@supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
+@publishableKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
+@baseUrl = http://localhost:4000/api
+
+### 1. Sign in
+# @name signin
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{publishableKey}}
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "testpassword123"
+}
+
+###
+@token = {{signin.response.body.access_token}}
+
+### Trip and user IDs
+@tripId = 01a17414-56c6-737f-b2f4-5beebf85242a
+@userId = c6013795-fc13-4f28-9830-ce42934af2e6
+
+### 2. List trip members
+GET {{baseUrl}}/trips/{{tripId}}/members
+Authorization: Bearer {{token}}
+
+###
+
+### 3. Get one trip member
+GET {{baseUrl}}/trips/{{tripId}}/members/{{userId}}
+Authorization: Bearer {{token}}
+
+###
+
+### 4. Change member role to MEMBER
+# Expected: 400 Bad Request if this user is the trip's only owner.
+PATCH {{baseUrl}}/trips/{{tripId}}/members/{{userId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "role": "MEMBER"
+}
+
+###
+
+### 5. Attempt to remove the last owner
+# Expected: Request rejected if this user is the trip's only owner.
+DELETE {{baseUrl}}/trips/{{tripId}}/members/{{userId}}
+Authorization: Bearer {{token}}
+
+###
+
+### 6. Attempt to leave as the last owner
+# Expected: Request rejected if this user is the trip's only owner.
+DELETE {{baseUrl}}/trips/{{tripId}}/members/me
+Authorization: Bearer {{token}}
