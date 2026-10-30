@@ -29,6 +29,7 @@ import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 import { memberRouter } from './routes/memberRoutes';
+import { activityRouter } from './routes/activityRoutes';
 
 // Reservations module routes
 import { reservationRouter } from './routes/reservationRoutes';
