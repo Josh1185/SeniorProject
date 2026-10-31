@@ -1,7 +1,8 @@
-
 /**
  * FILE: itineraryController.ts
  * DESCRIPTION: Endpoint controllers for the itinerary module.
+ *
+ * LAST UPDATED: 2026-10-29 - File Created (Christopher Soliman)
  */
 
 // -------------------- Type imports --------------------
@@ -13,6 +14,7 @@ import { prisma } from '../lib/prisma';
 // -------------------- Util imports --------------------
 import badRequest from '../utils/badRequest';
 import unauthorized from '../utils/unauthorized';
+import notFound from '../utils/notFound';
 import { groupEventsByDay } from '../utils/itineraryGrouping';
 
 // -------------------- GET /api/trips/:tripId/itinerary --------------------
@@ -53,13 +55,9 @@ export async function getItinerary(req: Request, res: Response) {
       id: true,
       createdById: true,
       title: true,
-      description: true,
       startDateTime: true,
       endDateTime: true,
       locationName: true,
-      locationAddress: true,
-      latitude: true,
-      longitude: true,
       activityId: true,
       reservationId: true,
       createdAt: true,
@@ -76,4 +74,56 @@ export async function getItinerary(req: Request, res: Response) {
 
   // ----- 7. Return the itinerary -----
   res.json({ days });
+}
+
+// -------------------- GET /api/trips/:tripId/itinerary/:itineraryEventId --------------------
+
+/**
+ * One itinerary event with its full detail
+ */
+export async function getItineraryEventById(req: Request, res: Response) {
+  // ----- 1. Check that the user is mounted to the request -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve both ids from the req params -----
+  const tripId = req.params.tripId;
+  const itineraryEventId = req.params.itineraryEventId;
+
+  // ----- 3. Validate that both IDs exist as strings -----
+  if (typeof tripId !== 'string') {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  if (typeof itineraryEventId !== 'string') {
+    return badRequest(res, 'Missing itinerary event id');
+  }
+
+  // ----- 4. Search for the itinerary event record using BOTH ids -----
+  const itineraryEvent = await prisma.itineraryEvent.findFirst({
+    where: { id: itineraryEventId, tripId },
+    select: {
+      id: true,
+      createdById: true,
+      title: true,
+      description: true,
+      startDateTime: true,
+      endDateTime: true,
+      locationName: true,
+      locationAddress: true,
+      latitude: true,
+      longitude: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // ----- 5. Missing OR out-of-trip itinerary event is a 404 -----
+  if (!itineraryEvent) {
+    return notFound(res, 'Itinerary event not found');
+  }
+
+  // ----- 6. Respond with formatted itinerary event data -----
+  res.json({ itineraryEvent });
 }
