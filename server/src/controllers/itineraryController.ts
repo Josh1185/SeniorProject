@@ -17,6 +17,12 @@ import unauthorized from '../utils/unauthorized';
 import notFound from '../utils/notFound';
 import { groupEventsByDay } from '../utils/itineraryGrouping';
 
+// -------------------- Schema imports --------------------
+import {
+  createItineraryEventSchema,
+  updateItineraryEventSchema,
+} from '../schemas/itinerarySchemas';
+
 // -------------------- GET /api/trips/:tripId/itinerary --------------------
 
 /**
@@ -126,4 +132,207 @@ export async function getItineraryEventById(req: Request, res: Response) {
 
   // ----- 6. Respond with formatted itinerary event data -----
   res.json({ itineraryEvent });
+}
+export async function createItineraryEvent(req: Request, res: Response) {
+  // ----- 1. Confirm the user is signed in -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve and validate the trip ID -----
+  const tripId = req.params.tripId;
+
+  if (typeof tripId !== 'string') {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  // ----- 3. Validate the request body -----
+  const body = createItineraryEventSchema.parse(req.body);
+
+  // ----- 4. Create the itinerary event -----
+  const event = await prisma.itineraryEvent.create({
+    data: {
+      tripId,
+      createdById: req.user.id,
+      title: body.title,
+      description: body.description,
+      startDateTime: new Date(body.startDateTime),
+      endDateTime:
+        body.endDateTime == null
+          ? body.endDateTime
+          : new Date(body.endDateTime),
+      locationName: body.locationName,
+      locationAddress: body.locationAddress,
+      latitude: body.latitude,
+      longitude: body.longitude,
+    },
+    select: {
+      id: true,
+      tripId: true,
+      createdById: true,
+      title: true,
+      description: true,
+      startDateTime: true,
+      endDateTime: true,
+      locationName: true,
+      locationAddress: true,
+      latitude: true,
+      longitude: true,
+      activityId: true,
+      reservationId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // ----- 5. Return 201 with the created event -----
+  res.status(201).json({ event });
+}
+// -------------------- PATCH /api/trips/:tripId/itinerary/:eventId --------------------
+
+/**
+ * Updates an existing itinerary event belonging to a trip.
+ *
+ * Mounted behind requireAuth and requireTripRole().
+ */
+export async function updateItineraryEvent(req: Request, res: Response) {
+  // ----- 1. Confirm the user is signed in -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve and validate the trip ID -----
+  const tripId = req.params.tripId;
+
+  if (typeof tripId !== 'string') {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  // ----- 3. Retrieve and validate the event ID -----
+  const eventId = req.params.eventId;
+
+  if (typeof eventId !== 'string') {
+    return badRequest(res, 'Missing event id');
+  }
+
+  // ----- 4. Find the event belonging to this trip -----
+  const existingEvent = await prisma.itineraryEvent.findFirstOrThrow({
+    where: {
+      id: eventId,
+      tripId,
+    },
+    select: {
+      startDateTime: true,
+      endDateTime: true,
+    },
+  });
+    // ----- 5. Validate the request body -----
+  const body = updateItineraryEventSchema.parse(req.body);
+    // ----- 6. Validate the resulting start and end times -----
+  const startDateTime =
+    body.startDateTime === undefined
+      ? existingEvent.startDateTime
+      : new Date(body.startDateTime);
+
+  const endDateTime =
+    body.endDateTime === undefined
+      ? existingEvent.endDateTime
+      : body.endDateTime === null
+        ? null
+        : new Date(body.endDateTime);
+
+  if (endDateTime !== null && endDateTime < startDateTime) {
+    return badRequest(
+      res,
+      'End date/time must be on or after the start date/time',
+    );
+  }
+    // ----- 7. Update the itinerary event -----
+  const event = await prisma.itineraryEvent.update({
+    where: {
+      id: eventId,
+    },
+    data: {
+      title: body.title,
+      description: body.description,
+      startDateTime: body.startDateTime
+        ? new Date(body.startDateTime)
+        : undefined,
+      endDateTime:
+        body.endDateTime === undefined
+          ? undefined
+          : body.endDateTime === null
+            ? null
+            : new Date(body.endDateTime),
+      locationName: body.locationName,
+      locationAddress: body.locationAddress,
+      latitude: body.latitude,
+      longitude: body.longitude,
+    },
+    select: {
+      id: true,
+      tripId: true,
+      createdById: true,
+      title: true,
+      description: true,
+      startDateTime: true,
+      endDateTime: true,
+      locationName: true,
+      locationAddress: true,
+      latitude: true,
+      longitude: true,
+      activityId: true,
+      reservationId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  // ----- 8. Return the updated event -----
+  res.json({ event });
+}
+// -------------------- DELETE /api/trips/:tripId/itinerary/:eventId --------------------
+
+/**
+ * Deletes an itinerary event belonging to a trip.
+ *
+ * Mounted behind requireAuth and requireTripRole().
+ */
+export async function deleteItineraryEvent(req: Request, res: Response) {
+  // ----- 1. Confirm the user is signed in -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+    // ----- 2. Retrieve and validate the trip ID -----
+  const tripId = req.params.tripId;
+
+  if (typeof tripId !== 'string') {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  // ----- 3. Retrieve and validate the event ID -----
+  const eventId = req.params.eventId;
+
+  if (typeof eventId !== 'string') {
+    return badRequest(res, 'Missing event id');
+  }
+    // ----- 4. Verify the event belongs to this trip -----
+  await prisma.itineraryEvent.findFirstOrThrow({
+    where: {
+      id: eventId,
+      tripId,
+    },
+    select: {
+      id: true,
+    },
+  });
+    // ----- 5. Delete the itinerary event -----
+  await prisma.itineraryEvent.delete({
+    where: {
+      id: eventId,
+    },
+  });
+
+  // ----- 6. Return 204 No Content -----
+  res.status(204).send();
 }
