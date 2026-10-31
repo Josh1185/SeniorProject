@@ -11,7 +11,6 @@ import type { Request, Response } from 'express';
 
 // -------------------- Module Imports --------------------
 import { prisma } from '../lib/prisma';
-import { z } from 'zod';
 
 // -------------------- Schema Imports --------------------
 import {
@@ -262,11 +261,6 @@ export async function updateReservation(req: Request, res: Response) {
     return badRequest(res, 'Missing reservation id');
   }
 
-  // Prevent malformed UUIDs from reaching the database.
-  if (!z.uuid().safeParse(reservationId).success) {
-    return notFound(res, 'Reservation not found');
-  }
-
   // ----- 4. Validate the request body -----
   const body = updateReservationSchema.parse(req.body);
 
@@ -341,11 +335,6 @@ export async function deleteReservation(req: Request, res: Response) {
 
   if (typeof reservationId !== 'string') {
     return badRequest(res, 'Missing reservation id');
-  }
-
-  // Prevent malformed UUIDs from reaching the database.
-  if (!z.uuid().safeParse(reservationId).success) {
-    return notFound(res, 'Reservation not found');
   }
 
   // ----- 4. Delete the reservation belonging to this trip -----
