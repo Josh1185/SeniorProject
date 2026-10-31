@@ -27,6 +27,7 @@ import { requireTripRole } from './middleware/tripRole';
 import { healthRouter } from './routes/health';
 import { userRouter } from './routes/userRoutes';
 import { tripRouter } from './routes/tripRoutes';
+import { itineraryRouter } from './routes/itineraryRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 import { memberRouter } from './routes/memberRoutes';
 import { activityRouter } from './routes/activityRoutes';
@@ -75,6 +76,7 @@ export function createApp() {
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
   app.use('/api/trips/:tripId/members', requireAuth, requireTripRole(), memberRouter);
   app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
+  app.use('/api/trips/:tripId/itinerary', requireAuth, requireTripRole(), itineraryRouter);
 
   // Reservations routes (requires auth and trip role)
   app.use('/api/trips/:tripId/reservations', requireAuth, requireTripRole(), reservationRouter);
