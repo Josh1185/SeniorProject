@@ -20,6 +20,7 @@ import {
   listActivitiesQuerySchema,
   type ListActivitiesQuery,
 } from '../schemas/activitySchemas';
+
 // -------------------- Util imports --------------------
 import unauthorized from '../utils/unauthorized';
 import badRequest from '../utils/badRequest';
