@@ -133,6 +133,8 @@ export async function getItineraryEventById(req: Request, res: Response) {
   // ----- 6. Respond with formatted itinerary event data -----
   res.json({ itineraryEvent });
 }
+
+// -------------------- POST /api/trips/:tripId/itinerary --------------------
 export async function createItineraryEvent(req: Request, res: Response) {
   // ----- 1. Confirm the user is signed in -----
   if (!req.user) {
@@ -188,6 +190,7 @@ export async function createItineraryEvent(req: Request, res: Response) {
   // ----- 5. Return 201 with the created event -----
   res.status(201).json({ event });
 }
+
 // -------------------- PATCH /api/trips/:tripId/itinerary/:eventId --------------------
 
 /**
@@ -226,9 +229,11 @@ export async function updateItineraryEvent(req: Request, res: Response) {
       endDateTime: true,
     },
   });
-    // ----- 5. Validate the request body -----
+
+  // ----- 5. Validate the request body -----
   const body = updateItineraryEventSchema.parse(req.body);
-    // ----- 6. Validate the resulting start and end times -----
+
+  // ----- 6. Validate the resulting start and end times -----
   const startDateTime =
     body.startDateTime === undefined
       ? existingEvent.startDateTime
@@ -291,6 +296,7 @@ export async function updateItineraryEvent(req: Request, res: Response) {
   // ----- 8. Return the updated event -----
   res.json({ event });
 }
+
 // -------------------- DELETE /api/trips/:tripId/itinerary/:eventId --------------------
 
 /**
@@ -316,7 +322,8 @@ export async function deleteItineraryEvent(req: Request, res: Response) {
   if (typeof eventId !== 'string') {
     return badRequest(res, 'Missing event id');
   }
-    // ----- 4. Verify the event belongs to this trip -----
+
+  // ----- 4. Verify the event belongs to this trip -----
   await prisma.itineraryEvent.findFirstOrThrow({
     where: {
       id: eventId,
@@ -326,7 +333,8 @@ export async function deleteItineraryEvent(req: Request, res: Response) {
       id: true,
     },
   });
-    // ----- 5. Delete the itinerary event -----
+
+  // ----- 5. Delete the itinerary event -----
   await prisma.itineraryEvent.delete({
     where: {
       id: eventId,
