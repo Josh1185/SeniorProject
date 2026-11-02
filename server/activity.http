@@ -25,3 +25,33 @@ Authorization: Bearer {{token}}
 ### Get details for one activity
 GET {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}
 Authorization: Bearer {{token}}
+
+### Create an activity
+# @name createActivity
+POST {{baseUrl}}/trips/{{tripId}}/activities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Visit the museum",
+  "description": "Explore the exhibits",
+  "locationName": "City Museum",
+  "estimatedCostCents": 2500
+}
+
+###
+@newActivityId = {{createActivity.response.body.activity.id}}
+
+### Update the newly created activity
+PATCH {{baseUrl}}/trips/{{tripId}}/activities/{{newActivityId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Visit the museum in the afternoon",
+  "estimatedCostCents": 3000
+}
+
+### Delete the newly created activity
+DELETE {{baseUrl}}/trips/{{tripId}}/activities/{{newActivityId}}
+Authorization: Bearer {{token}}
