@@ -1,24 +1,29 @@
 
 /**
  * FILE: MembersPage.tsx
- * DESCRIPTION: Displays the trip member roster and member detail modal.
+ * DESCRIPTION: Displays the trip member roster, member details,
+ *              and member management actions.
  *
  * OWNER: Yahya Nawaz
  * ISSUES:
  * #112 - M3 Members: List Page (Sprint 2)
  * #113 - M4 Members: Member Detail Modal (Sprint 2)
+ * #114 - M5 Members: Role Change, Remove, Leave UI (Sprint 2)
  */
 
 // -------------------- Type Imports --------------------
 
-import type { TripMemberSummary } from '../../types/api';
+import type { TripMemberSummary, TripRole } from '../../types/api';
 import type { Column } from '../../components/list/listTypes';
 
 // -------------------- Module and Library Imports --------------------
 
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useTrip } from '../../hooks/trips/useTrip';
+import { useChangeTripMemberRole } from '../../hooks/trips/useChangeTripMemberRole';
+import { useRemoveTripMember } from '../../hooks/trips/useRemoveTripMember';
+import { useLeaveTrip } from '../../hooks/trips/useLeaveTrip';
 import { formatDate } from '../../lib/format';
 
 // -------------------- Component Imports --------------------
@@ -123,15 +128,26 @@ const MEMBER_COLUMNS: Column<TripMemberSummary>[] = [
 // -------------------- Main Page Component --------------------
 
 export function MembersPage() {
-  // Get the trip ID from the URL.
+  // Get trip ID from URL.
   const { tripId } = useParams();
 
-  // Retrieve trip information and its members.
+  // Navigation.
+  const navigate = useNavigate();
+
+  // Retrieve trip information and members.
   const trip = useTrip(tripId);
 
-  // Track which member is selected for the detail modal.
+  // M5 mutation hooks.
+  const changeRole = useChangeTripMemberRole(tripId ?? '');
+  const removeMember = useRemoveTripMember(tripId ?? '');
+  const leaveTrip = useLeaveTrip(tripId ?? '');
+
+  // Track selected member for detail modal.
   const [selectedMember, setSelectedMember] =
     useState<TripMemberSummary | null>(null);
+
+  // Track action errors.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Loading state.
   if (trip.isLoading) {
@@ -180,22 +196,137 @@ export function MembersPage() {
   }
 
   // Extract trip and member information.
-  const { trip: tripData } = trip.data;
+  const { trip: tripData, yourRole } = trip.data;
   const members = tripData.members;
+
+  // Determine whether the signed-in user is an owner.
+  const isCurrentUserOwner = yourRole === 'OWNER';
+
+  // Count trip owners.
+  const ownerCount = members.filter(
+    (member) => member.role === 'OWNER',
+  ).length;
+
+  // Determine whether the selected member is the only owner.
+  const isLastOwner =
+    selectedMember?.role === 'OWNER' && ownerCount === 1;
+
+  // -------------------- Change Member Role --------------------
+
+  function handleRoleChange(role: TripRole) {
+    if (!selectedMember || !tripId) return;
+
+    setActionError(null);
+
+    changeRole.mutate(
+      {
+        userId: selectedMember.user.id,
+        role,
+      },
+      {
+        onSuccess: (response) => {
+          setSelectedMember(response.member);
+        },
+        onError: (error) => {
+          setActionError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to change member role.',
+          );
+        },
+      },
+    );
+  }
+
+  // -------------------- Remove Member --------------------
+
+  function handleRemoveMember() {
+    if (!selectedMember || !tripId) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to remove ${selectedMember.user.displayName} from this trip?`,
+    );
+
+    if (!confirmed) return;
+
+    setActionError(null);
+
+    removeMember.mutate(selectedMember.user.id, {
+      onSuccess: () => {
+        setSelectedMember(null);
+      },
+      onError: (error) => {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to remove this member.',
+        );
+      },
+    });
+  }
+
+  // -------------------- Leave Trip --------------------
+
+  function handleLeaveTrip() {
+    if (!tripId) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to leave "${tripData.name}"?`,
+    );
+
+    if (!confirmed) return;
+
+    setActionError(null);
+
+    leaveTrip.mutate(undefined, {
+      onSuccess: () => {
+        navigate('/dashboard');
+      },
+      onError: (error) => {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to leave this trip.',
+        );
+      },
+    });
+  }
 
   return (
     <div className="space-y-5">
 
       {/* Page Heading */}
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-900">
-          Trip Members
-        </h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-900">
+            Trip Members
+          </h1>
 
-        <p className="mt-1 text-sm text-ink-700">
-          View everyone participating in {tripData.name}.
-        </p>
+          <p className="mt-1 text-sm text-ink-700">
+            View everyone participating in {tripData.name}.
+          </p>
+        </div>
+
+        {/* Leave Trip Button */}
+        <button
+          type="button"
+          onClick={handleLeaveTrip}
+          disabled={leaveTrip.isPending}
+          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {leaveTrip.isPending ? 'Leaving...' : 'Leave Trip'}
+        </button>
       </div>
+
+      {/* Action Error Message */}
+      {actionError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          {actionError}
+        </div>
+      )}
 
       {/* Member Count */}
       <div className="rounded-lg border border-ink-300 bg-ink-50 p-4">
@@ -273,6 +404,63 @@ export function MembersPage() {
             <DetailField label="Date Joined">
               {formatDate(selectedMember.joinedAt)}
             </DetailField>
+
+            {/* M5: Owner Management Controls */}
+            {isCurrentUserOwner && !isLastOwner && (
+              <>
+                <DetailField label="Change Role" full>
+                  <select
+                    value={selectedMember.role}
+                    onChange={(event) =>
+                      handleRoleChange(
+                        event.target.value as TripRole,
+                      )
+                    }
+                    disabled={changeRole.isPending}
+                    className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900 disabled:opacity-50"
+                  >
+                    <option value="MEMBER">Member</option>
+                    <option value="OWNER">Owner</option>
+                  </select>
+
+                  {changeRole.isPending && (
+                    <p className="mt-1 text-xs text-ink-700">
+                      Updating role...
+                    </p>
+                  )}
+                </DetailField>
+
+                <DetailField label="Member Management" full>
+                  <button
+                    type="button"
+                    onClick={handleRemoveMember}
+                    disabled={removeMember.isPending}
+                    className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {removeMember.isPending
+                      ? 'Removing...'
+                      : 'Remove Member'}
+                  </button>
+                </DetailField>
+              </>
+            )}
+
+            {/* Last Owner Protection */}
+            {isLastOwner && (
+              <p className="text-sm text-ink-700">
+                This member is the only owner of this trip.
+                Their role cannot be changed and they cannot
+                be removed.
+              </p>
+            )}
+
+            {/* Non-owner Information */}
+            {!isCurrentUserOwner && (
+              <p className="text-sm text-ink-700">
+                Only trip owners can change member roles or
+                remove members.
+              </p>
+            )}
           </>
         )}
       </DetailModal>
