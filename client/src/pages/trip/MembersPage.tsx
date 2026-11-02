@@ -1,10 +1,12 @@
 
 /**
  * FILE: MembersPage.tsx
- * DESCRIPTION: Displays the complete roster of trip members.
+ * DESCRIPTION: Displays the trip member roster and member detail modal.
  *
  * OWNER: Yahya Nawaz
- * ISSUE: #112 - M3 Members: List Page (Sprint 2)
+ * ISSUES:
+ * #112 - M3 Members: List Page (Sprint 2)
+ * #113 - M4 Members: Member Detail Modal (Sprint 2)
  */
 
 // -------------------- Type Imports --------------------
@@ -14,6 +16,7 @@ import type { Column } from '../../components/list/listTypes';
 
 // -------------------- Module and Library Imports --------------------
 
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useTrip } from '../../hooks/trips/useTrip';
 import { formatDate } from '../../lib/format';
@@ -22,6 +25,10 @@ import { formatDate } from '../../lib/format';
 
 import { Avatar } from '../../components/Avatar';
 import { DataList } from '../../components/list/DataList';
+import {
+  DetailModal,
+  DetailField,
+} from '../../components/DetailModal';
 
 // -------------------- Internal Components --------------------
 
@@ -122,6 +129,10 @@ export function MembersPage() {
   // Retrieve trip information and its members.
   const trip = useTrip(tripId);
 
+  // Track which member is selected for the detail modal.
+  const [selectedMember, setSelectedMember] =
+    useState<TripMemberSummary | null>(null);
+
   // Loading state.
   if (trip.isLoading) {
     return (
@@ -217,7 +228,7 @@ export function MembersPage() {
             </h2>
 
             <p className="mt-1 text-sm text-ink-700">
-              View each member's name, role, and join date.
+              Select a member to view their details.
             </p>
           </div>
 
@@ -228,9 +239,44 @@ export function MembersPage() {
             renderCard={(member) => (
               <MemberCard member={member} />
             )}
+            onItemClick={setSelectedMember}
           />
         </section>
       )}
+
+      {/* Member Detail Modal */}
+      <DetailModal
+        open={selectedMember !== null}
+        onClose={() => setSelectedMember(null)}
+        title={selectedMember?.user.displayName ?? 'Member Details'}
+      >
+        {selectedMember && (
+          <>
+            <DetailField label="Member" full>
+              <div className="flex items-center gap-3">
+                <Avatar
+                  displayName={selectedMember.user.displayName}
+                  avatarUrl={selectedMember.user.avatarUrl}
+                  size="lg"
+                />
+
+                <span>
+                  {selectedMember.user.displayName}
+                </span>
+              </div>
+            </DetailField>
+
+            <DetailField label="Role">
+              <MemberRoleBadge role={selectedMember.role} />
+            </DetailField>
+
+            <DetailField label="Date Joined">
+              {formatDate(selectedMember.joinedAt)}
+            </DetailField>
+          </>
+        )}
+      </DetailModal>
+
     </div>
   );
 }
