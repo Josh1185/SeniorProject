@@ -1,6 +1,6 @@
 /**
  * FILE: ExpensesPage.tsx
- * DESCRIPTION: The trip's expense list: summary, toolbar, list.
+ * DESCRIPTION: The trip's expense list: summary, toolbar, list, detail modal.
  *
  *              Copies MyTripsPage. Filter state lives in the URL via
  *              useListQueryState, so `?search=gas` survives a refresh, works
@@ -9,8 +9,7 @@
  *              WHAT IS DELIBERATELY NOT HERE YET, and where it arrives:
  *                - "Your Balance" in the summary          -> E-6
  *                - Add Expense button and create modal    -> E-5
- *                - Clicking a row to open its detail      -> E-4
- *                - Edit / delete actions on a row         -> E-5
+ *                - Edit / delete inside the detail modal  -> E-5
  *                - A "Paid by" filter                     -> needs a server
  *                  query param; one entry in `selects` once it exists
  *
@@ -20,14 +19,17 @@
  *              buttons would not be. If paging is ever needed it belongs in
  *              the server once, for all four feature lists, not invented here.
  *
- * LAST UPDATED: 2026-11-02 - Real list, search and sort (Josh Iehle)
+ * LAST UPDATED: 2026-11-02 - Detail modal (Josh Iehle)
+ *               2026-11-02 - Real list, search and sort (Josh Iehle)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
+import type { ExpenseListItem } from '../../types/api';
 import type { ExpenseFilters } from '../../services/expenseService';
 
 // -------------------- Module and lib imports --------------------
+import { useState } from 'react';
 import { useParams } from 'react-router';
 import { formatCents } from '../../lib/format';
 import { unpackSort } from '../../lib/listParams';
@@ -38,6 +40,7 @@ import { useListQueryState } from '../../hooks/useListQueryState';
 
 // -------------------- Component imports --------------------
 import { EmptyState } from '../../components/list/EmptyState';
+import { ExpenseDetailModal } from '../../components/expenses/ExpenseDetailModal';
 import { ExpenseList } from '../../components/expenses/ExpenseList';
 import { ListToolbar } from '../../components/list/ListToolbar';
 
@@ -103,6 +106,20 @@ function ExpenseSummary({ totalCents }: { totalCents: number }) {
 // -------------------- Component --------------------
 export function ExpensesPage() {
   const { tripId } = useParams();
+
+  /**
+   * The row whose detail modal is open, or null.
+   *
+   * The WHOLE row, not just its id: the modal needs the title to put in its
+   * header the instant it opens, and the row is already in hand. Storing an id
+   * alone would leave the header blank for the length of the request.
+   *
+   * Local state rather than a URL param, unlike the filters. Deep-linking a
+   * single expense would be nice and is about five lines on top of
+   * useListQueryState - but it is not in the lofi and not worth adding in four
+   * places independently. If it is ever wanted, it belongs in DetailModal once.
+   */
+  const [selected, setSelected] = useState<ExpenseListItem | null>(null);
 
   // ----- 1. List state, from the URL -----
   const list = useListQueryState({ defaults: EXPENSE_LIST_DEFAULTS });
@@ -200,13 +217,22 @@ export function ExpensesPage() {
 
         {results.length > 0 && (
           <>
-            <ExpenseList expenses={results} />
+            <ExpenseList expenses={results} onSelect={setSelected} />
             <p className="mt-4 text-sm text-ink-700">
               Showing {results.length} {results.length === 1 ? 'expense' : 'expenses'}
             </p>
           </>
         )}
       </div>
+
+      {/* Rendered once and left mounted. DetailModal handles hiding itself,
+          and `enabled` on useExpense means nothing is fetched until a row is
+          selected. */}
+      <ExpenseDetailModal
+        tripId={tripId}
+        expense={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }
