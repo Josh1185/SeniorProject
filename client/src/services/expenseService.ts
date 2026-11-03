@@ -6,7 +6,7 @@
  */
 
 // -------------------- Type imports --------------------
-import type { ExpenseListResponse } from '../types/api';
+import type { ExpenseListResponse, ExpenseDetailResponse } from '../types/api';
 
 // -------------------- Module and lib imports --------------------
 import { get } from '../lib/api';
@@ -53,4 +53,12 @@ export function fetchExpenses(
   filters: ExpenseFilters = {},
 ): Promise<ExpenseListResponse> {
   return get<ExpenseListResponse>(`/trips/${tripId}/expenses${toQueryString(filters)}`);
+}
+
+/** GET /api/trips/:tripId/expenses/:expenseId */
+export function fetchExpense(
+  tripId: string,
+  expenseId: string,
+): Promise<ExpenseDetailResponse> {
+  return get<ExpenseDetailResponse>(`/trips/${tripId}/expenses/${expenseId}`);
 }

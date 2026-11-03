@@ -153,3 +153,37 @@ export interface ExpenseListResponse {
   /** The whole trip's spending, unaffected by the search filter. */
   totalCents: number;
 }
+
+/** One line of an expense's split. */
+export interface ExpenseParticipantSummary {
+  /** The ExpenseParticipant row's id, not the user's. The user's is on `user`. */
+  id: string;
+  /** Integer cents. These must sum to the expense's amountCents. */
+  shareCents: number;
+  user: UserSummary;
+}
+
+/**
+ * GET /api/trips/:tripId/expenses/:expenseId
+ *
+ * More fields than ExpenseListItem, because the detail endpoint selects more.
+ * The two are separate types for that reason - one shared type would lie about
+ * whichever endpoint returned less.
+ */
+export interface ExpenseDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  expenseDate: string;
+  amountCents: number;
+  paidBy: UserSummary;
+  /** Both null until Sprint 3/4 wires activities and reservations into expenses. */
+  activity: { id: string; name: string } | null;
+  reservation: { id: string; name: string } | null;
+  participants: ExpenseParticipantSummary[];
+}
+
+/** GET /api/trips/:tripId/expenses/:expenseId */
+export interface ExpenseDetailResponse {
+  expense: ExpenseDetail;
+}
