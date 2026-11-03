@@ -2,7 +2,8 @@
  * FILE: expenseController.ts
  * DESCRIPTION: Endpoint controllers for the expense module.
  *
- * LAST UPDATED: 2026-10-20 - Add create and update, fix delete status (Josh Iehle)
+ * LAST UPDATED: 2026-11-02 - Add trip-wide expense total in list response
+ *               2026-10-20 - Add create and update, fix delete status (Josh Iehle)
  *               2026-10-19 - Add Delete Expense Controller (Josh Iehle)
  *               2026-10-18 - File Created (Josh Iehle)
  */
@@ -180,6 +181,18 @@ export async function listExpenses(req: Request, res: Response) {
     },
   });
 
+  // ----- 5b. The trip's total spending -----
+  //
+  // Deliberately NOT filtered by `query.search`. This is the total the trip
+  // has spent, not the total of whatever happens to be on screen - searching
+  // for "gas" must not make the trip look $1,700 cheaper.
+  //
+  // _sum returns null, not 0, when there are no matching rows.
+  const totals = await prisma.expense.aggregate({
+    where: { tripId },
+    _sum: { amountCents: true },
+  });
+
   // ----- 6. Flatten the query shape into the response shape -----
   const payload = expenses.map(({ _count, ...expense }) => ({
     ...expense,
@@ -187,7 +200,10 @@ export async function listExpenses(req: Request, res: Response) {
   }));
 
   // ----- 7. Respond with formatted shape -----
-  res.json({ expenses: payload });
+  res.json({
+    expenses: payload,
+    totalCents: totals._sum.amountCents ?? 0,
+  });
 }
 
 // -------------------- GET /api/trips/:tripId/expenses/:expenseId --------------------
