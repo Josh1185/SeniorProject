@@ -187,3 +187,35 @@ export interface ExpenseDetail {
 export interface ExpenseDetailResponse {
   expense: ExpenseDetail;
 }
+
+/**
+ * POST /api/trips/:tripId/expenses - mirrors createExpenseSchema on the server.
+ *
+ * `amountCents` is INTEGER CENTS. The form takes dollars; lib/money.ts does
+ * the conversion and is the only place allowed to.
+ *
+ * `participantIds` carries who it is split between. The SHARES are not sent -
+ * the server computes them with splitEqually so the sum is exact by
+ * construction. A client that could set shares could set ones that do not add
+ * up, and nothing downstream would notice until a settlement screen refused
+ * to balance.
+ */
+export interface CreateExpenseBody {
+  title: string;
+  amountCents: number;
+  /** YYYY-MM-DD, which is what z.iso.date() accepts. Never a timestamp. */
+  expenseDate: string;
+  paidById: string;
+  participantIds: string[];
+  /** null CLEARS the column on a PATCH; undefined leaves it alone. */
+  description?: string | null;
+}
+
+/**
+ * PATCH /api/trips/:tripId/expenses/:expenseId - every field optional.
+ *
+ * Two semantics worth knowing, both enforced server-side:
+ *   - participantIds REPLACES the set wholesale; there is no add-one.
+ *   - Sending amountCents OR participantIds re-splits the whole expense.
+ */
+export type UpdateExpenseBody = Partial<CreateExpenseBody>;
