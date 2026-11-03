@@ -13,11 +13,13 @@
  *
  *              Each feature adds its own factory here.
  *
- * LAST UPDATED: 2026-10-13 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-11-02 - Add expense query keys (Josh Iehle)
+ *               2026-10-13 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
 import type { TripFilters } from '../services/tripService';
+import type { ExpenseFilters } from '../services/expenseService';
 
 // -------------------- Trip Module --------------------
 export const tripKeys = {
@@ -26,4 +28,13 @@ export const tripKeys = {
   list: (filters: TripFilters) => [...tripKeys.lists(), filters] as const,
   details: () => [...tripKeys.all, 'detail'] as const,
   detail: (tripId: string) => [...tripKeys.details(), tripId] as const,
+};
+
+// -------------------- Expense Module --------------------
+export const expenseKeys = {
+  all: (tripId: string) => ['trips', tripId, 'expenses'] as const,
+  lists: (tripId: string) => [...expenseKeys.all(tripId), 'list'] as const,
+  list: (tripId: string, filters: ExpenseFilters) => [...expenseKeys.lists(tripId), filters] as const,
+  details: (tripId: string) => [...expenseKeys.all(tripId), 'detail'] as const,
+  detail: (tripId: string, expenseId: string) => [...expenseKeys.details(tripId), expenseId] as const,
 };
