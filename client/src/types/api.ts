@@ -130,3 +130,26 @@ export interface CreateTripBody {
 
 /** PATCH /api/trips/:tripId - every field optional. */
 export type UpdateTripBody = Partial<CreateTripBody>;
+
+// -------------------- Expenses --------------------
+
+/**
+ * One row in GET /api/trips/:tripId/expenses
+ */
+export interface ExpenseListItem {
+  id: string;
+  title: string;
+  /** ISO date string. JSON has no Date type, so this arrives as a string. */
+  expenseDate: string;
+  /** Integer cents, always. Never divide this outside formatCents. */
+  amountCents: number;
+  paidBy: UserSummary;
+  participantCount: number;
+}
+
+/** GET /api/trips/:tripId/expenses */
+export interface ExpenseListResponse {
+  expenses: ExpenseListItem[];
+  /** The whole trip's spending, unaffected by the search filter. */
+  totalCents: number;
+}
