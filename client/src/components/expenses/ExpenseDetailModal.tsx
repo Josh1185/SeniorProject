@@ -7,11 +7,16 @@
  *              what for it, which is the question the whole module exists to
  *              answer.
  *
- * LAST UPDATED: 2026-11-02 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-11-02 - Edit and delete actions (Josh Iehle)
+ *               2026-11-02 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
-import type { ExpenseListItem, ExpenseParticipantSummary } from '../../types/api';
+import type {
+  ExpenseDetail,
+  ExpenseListItem,
+  ExpenseParticipantSummary,
+} from '../../types/api';
 
 // -------------------- Module and lib imports --------------------
 import { useEffect } from 'react';
@@ -30,6 +35,17 @@ interface ExpenseDetailModalProps {
   /** The clicked list row, or null when nothing is open. */
   expense: ExpenseListItem | null;
   onClose: () => void;
+  /**
+   * Asked for the edit form. Carries the FULL detail, not the row, because
+   * the form needs the participant list and the row does not have it.
+   *
+   * An intent, not an action: this modal does not open the form itself. The
+   * page closes this one and opens that one, so two dialogs are never open at
+   * once - which is legal HTML and looks broken.
+   */
+  onEdit: (expense: ExpenseDetail) => void;
+  /** Asked for the delete confirmation. Same reasoning as onEdit. */
+  onDelete: (expense: ExpenseDetail) => void;
 }
 
 // -------------------- Internal Components --------------------
@@ -68,7 +84,13 @@ function ParticipantRow({
 }
 
 // -------------------- Component --------------------
-export function ExpenseDetailModal({ tripId, expense, onClose }: ExpenseDetailModalProps) {
+export function ExpenseDetailModal({
+  tripId,
+  expense,
+  onClose,
+  onEdit,
+  onDelete,
+}: ExpenseDetailModalProps) {
   // ----- 1. Hooks, all of them, before any branching -----
   // React calls hooks in order, so an early return above one of these would
   // change the hook count between renders and React would throw.
@@ -114,7 +136,32 @@ export function ExpenseDetailModal({ tripId, expense, onClose }: ExpenseDetailMo
       title={expense?.title ?? ''}
       isLoading={detail.isLoading}
       error={detail.error as Error | null}
-      // E-5 puts Edit and Delete here.
+      // Only rendered once the detail has loaded - `data` is what both
+      // handlers need to pass on, and buttons that do nothing for the first
+      // 200ms are worse than buttons that appear with the content.
+      //
+      // No role check. Any member of a trip may edit or delete anything on
+      // it; the trip itself is the only OWNER-gated thing in the app.
+      actions={
+        data ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onEdit(data)}
+              className="cursor-pointer rounded-md border border-ink-300 px-4 py-2 text-sm font-medium text-ink-900 duration-150 hover:bg-ink-100"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(data)}
+              className="cursor-pointer rounded-md border border-red-200 px-4 py-2 text-sm font-medium text-red-700 duration-150 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </>
+        ) : undefined
+      }
     >
       <DetailField label="Paid by">{data?.paidBy.displayName}</DetailField>
 
