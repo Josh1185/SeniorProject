@@ -6,10 +6,10 @@
  */
 
 // -------------------- Type imports --------------------
-import type { ExpenseListResponse, ExpenseDetailResponse } from '../types/api';
+import type { ExpenseListResponse, ExpenseDetailResponse, UpdateExpenseBody, CreateExpenseBody } from '../types/api';
 
 // -------------------- Module and lib imports --------------------
-import { get } from '../lib/api';
+import { get, post, del, patch } from '../lib/api';
 
 // -------------------- List Filters --------------------
 
@@ -61,4 +61,26 @@ export function fetchExpense(
   expenseId: string,
 ): Promise<ExpenseDetailResponse> {
   return get<ExpenseDetailResponse>(`/trips/${tripId}/expenses/${expenseId}`);
+}
+
+/** POST /api/trips/:tripId/expenses */
+export function createExpense(
+  tripId: string,
+  body: CreateExpenseBody,
+): Promise<ExpenseDetailResponse> {
+  return post<ExpenseDetailResponse>(`/trips/${tripId}/expenses`, body);
+}
+
+/** PATCH /api/trips/:tripId/expenses/:expenseId */
+export function updateExpense(
+  tripId: string,
+  expenseId: string,
+  body: UpdateExpenseBody,
+): Promise<ExpenseDetailResponse> {
+  return patch<ExpenseDetailResponse>(`/trips/${tripId}/expenses/${expenseId}`, body);
+}
+
+/** DELETE /api/trips/:tripId/expenses/:expenseId - returns 204, nothing to type. */
+export function deleteExpense(tripId: string, expenseId: string): Promise<void> {
+  return del(`/trips/${tripId}/expenses/${expenseId}`);
 }
