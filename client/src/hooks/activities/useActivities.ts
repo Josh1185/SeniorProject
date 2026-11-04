@@ -6,7 +6,7 @@
  */
 
 // -------------------- Module imports --------------------
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
 // -------------------- Service imports --------------------
 import { fetchActivities } from '../../services/activityService';
@@ -23,5 +23,6 @@ export function useActivities(tripId: string | undefined, filters: ActivityFilte
     queryKey: activityKeys.list(tripId ?? '', filters),
     queryFn: () => fetchActivities(tripId!, filters),
     enabled: Boolean(tripId),
+    placeholderData: keepPreviousData,
   });
 }
