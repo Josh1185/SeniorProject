@@ -11,8 +11,9 @@
  *              Each feature adds its own section. Keep them in the same order
  *              as the server's route modules.
  *
- * LAST UPDATED: 2026-10-16 - Add destination address and coordinates (Josh Iehle)
- *               2026-10-11 - File Created (Josh Iehle)
+ *  LAST UPDATED: 2026-11-03 - Add Activities list response types (Brandon Douglass)
+ *                2026-10-16 - Add destination address and coordinates (Josh Iehle)
+ *                2026-10-11 - File Created (Josh Iehle)
  */
 
 // -------------------- Shared --------------------
@@ -219,3 +220,26 @@ export interface CreateExpenseBody {
  *   - Sending amountCents OR participantIds re-splits the whole expense.
  */
 export type UpdateExpenseBody = Partial<CreateExpenseBody>;
+
+// -------------------- Activities --------------------
+
+/** One activity returned by GET /api/trips/:tripId/activities. */
+export interface ActivityListItem {
+  id: string;
+  name: string;
+  locationName: string | null;
+  estimatedCostCents: number | null;
+  suggestedDateTime: string | null;
+  createdAt: string;
+  createdBy: {
+    id: string;
+    displayName: string;
+  };
+  voteLength: number;
+  hasVoted: boolean;
+}
+
+/** GET /api/trips/:tripId/activities */
+export interface ActivityListResponse {
+  activities: ActivityListItem[];
+}
