@@ -1,0 +1,415 @@
+###############################################################################
+# FILE: invitation.http
+# DESCRIPTION: Manual request tests for the invitation module. Run with the
+#              VS Code REST Client extension (humao.rest-client).
+#
+#              THIS MODULE NEEDS TWO ACCOUNTS. Every other feature can be
+#              tested as one user; an invitation has a sender and a receiver,
+#              and the interesting cases are all about the gap between them.
+#              Sign-ins for both are at the top and each request says which
+#              token it uses.
+#
+#              Every request has an expected status in its comment. The PR is
+#              not ready until every one returns what its comment says -
+#              including the ones meant to fail.
+#
+# LAST UPDATED: 2026-11-05 - File Created (Josh Iehle)
+###############################################################################
+
+# -------------------- Variables --------------------
+
+@baseUrl = http://localhost:4000/api
+@supabaseUrl = https://usivgxovisdhfqneffto.supabase.co
+@supabaseKey = sb_publishable_7lOB5WANGC3tMzzxh7Loqg_sNqEOuEE
+
+# OWNER of @tripId. Sends the invitations.
+@ownerEmail = josh@abc.com
+@ownerPassword = test1234
+
+# The INVITEE. Must NOT be a member of @tripId when you start.
+# Register this one through the UI first if it does not exist.
+@inviteeEmail = invitee@abc.com
+@inviteePassword = test1234
+
+@tripId = 01a19f08-d0c6-740f-a800-5fa36d63e97a
+
+# A trip you are a MEMBER of but do not own. Proves the owner-only guard.
+@memberOnlyTripId = 01a1568d-45db-70de-9115-291ebacf0bc3
+
+
+###############################################################################
+# 0. SETUP - both sign-ins
+###############################################################################
+
+### Sign in as the OWNER. Expect 200.
+# @name ownerSignIn
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{supabaseKey}}
+Content-Type: application/json
+
+{ "email": "{{ownerEmail}}", "password": "{{ownerPassword}}" }
+
+###
+@ownerToken = {{ownerSignIn.response.body.access_token}}
+
+### Sign in as the INVITEE. Expect 200.
+# @name inviteeSignIn
+POST {{supabaseUrl}}/auth/v1/token?grant_type=password
+apikey: {{supabaseKey}}
+Content-Type: application/json
+
+{ "email": "{{inviteeEmail}}", "password": "{{inviteePassword}}" }
+
+###
+@inviteeToken = {{inviteeSignIn.response.body.access_token}}
+
+
+###############################################################################
+# 1. CREATE - owner sends an invitation
+###############################################################################
+
+### Invite the second account. Expect 201.
+#
+# Check the response by hand:
+#   - token is 43 characters of [A-Za-z0-9_-], with no + / or =
+#     (if it looks like a uuid, the wrong generator is wired up - a uuid v7
+#      carries a timestamp in its first half and is the wrong shape for a
+#      credential)
+#   - expiresAt is about two weeks out
+#   - status is PENDING
+#   - email came back LOWERCASED
+# @name createdInvitation
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "{{inviteeEmail}}" }
+
+###
+@inviteToken = {{createdInvitation.response.body.invitation.token}}
+@invitationId = {{createdInvitation.response.body.invitation.id}}
+
+### >>> The SAME address again. Expect 400.
+# There is no @@unique([tripId, email]) on the table - deliberately, so a
+# declined invite can be re-sent - so this check is the only thing stopping an
+# owner producing five live links for one person by clicking twice.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "{{inviteeEmail}}" }
+
+### >>> The same address in a DIFFERENT CASE. Expect 400, not 201.
+# If this returns 201, the lowercasing in the schema is not running and you
+# now have two live invitations that look different and are not.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "INVITEE@ABC.COM" }
+
+### Inviting yourself. Expect 400 - you are already a member.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "{{ownerEmail}}" }
+
+### An address with no account yet. Expect 201.
+# Invitations are addressed to an EMAIL, not a user. Someone with no account
+# can be invited, register later, and find it waiting.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "nobody-has-this-yet@example.com" }
+
+### Whitespace and mixed case. Expect 201 and a clean lowercase email back.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "   Someone.Else@Example.COM  " }
+
+
+###############################################################################
+# 2. CREATE - validation and permission
+###############################################################################
+
+### Not an email. Expect 422.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "not-an-email" }
+
+### Empty email. Expect 422.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "" }
+
+### Missing email. Expect 422.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{}
+
+### Trying to smuggle a role. Expect 201, and the new member is NOT an owner.
+# Zod strips unknown keys, so `role` never reaches the controller. Accept the
+# invitation later and confirm the roster shows MEMBER.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "role-test@example.com", "role": "OWNER" }
+
+### >>> A MEMBER trying to invite. Expect 404.
+# requireTripRole('OWNER') on the mount. 404 rather than 403 is deliberate -
+# a 403 would confirm the trip exists.
+POST {{baseUrl}}/trips/{{memberOnlyTripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "someone@example.com" }
+
+### No auth. Expect 401.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Content-Type: application/json
+
+{ "email": "someone@example.com" }
+
+
+###############################################################################
+# 3. LIST - the owner's view
+###############################################################################
+
+### Every invitation on this trip. Expect 200.
+# Each carries its token, because the owner is the person who copies the link.
+GET {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+
+### >>> A MEMBER listing them. Expect 404.
+# Invitation tokens are in this response. If a non-owner can read it, every
+# member can mint themselves a join link for anyone.
+GET {{baseUrl}}/trips/{{memberOnlyTripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+
+### No auth. Expect 401.
+GET {{baseUrl}}/trips/{{tripId}}/invitations
+
+
+###############################################################################
+# 4. MINE - the invitee's dashboard tab
+###############################################################################
+
+### >>> As the INVITEE. Expect 200, and the invitation from section 1 is in it.
+# Note the token below: inviteeToken, not ownerToken. This is the request the
+# Trip Invites tab makes, and it works for someone with NO access to the trip.
+GET {{baseUrl}}/invitations
+Authorization: Bearer {{inviteeToken}}
+
+### >>> As the OWNER. Expect 200 and an EMPTY list.
+# The owner sent it; it is not addressed to them. If their own invitation
+# shows up here, the email filter is not doing its job - and that filter IS
+# the authorization on this endpoint.
+GET {{baseUrl}}/invitations
+Authorization: Bearer {{ownerToken}}
+
+### No auth. Expect 401.
+GET {{baseUrl}}/invitations
+
+
+###############################################################################
+# 5. ACCEPT
+#
+# THE TOKEN IS THE AUTHORIZATION. There is no check that the caller's email
+# matches the invitation's - that is the product decision, not an oversight.
+# Invitations travel as a copyable link, and a link that only works for one
+# address is not a link. Say exactly that if it comes up at the defense.
+###############################################################################
+
+### A token that does not exist. Expect 404.
+POST {{baseUrl}}/invitations/thisisnotarealtokenatallnopenope/accept
+Authorization: Bearer {{inviteeToken}}
+
+### An absurdly long token. Expect 404, fast, with no database round trip.
+POST {{baseUrl}}/invitations/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/accept
+Authorization: Bearer {{inviteeToken}}
+
+### No auth. Expect 401.
+# The token alone is not enough - you still have to be signed in as SOMEBODY,
+# because accepting creates a membership and a membership needs a user.
+POST {{baseUrl}}/invitations/{{inviteToken}}/accept
+
+### >>> Accept it, as the INVITEE. Expect 200 and { "tripId": "..." }.
+POST {{baseUrl}}/invitations/{{inviteToken}}/accept
+Authorization: Bearer {{inviteeToken}}
+
+### Confirm the membership exists. Expect 200 - the trip is now theirs to see.
+# Before the accept above, this same request returned 404.
+GET {{baseUrl}}/trips/{{tripId}}
+Authorization: Bearer {{inviteeToken}}
+
+### >>> Accept the SAME link again. Expect 400, NOT 500 and NOT a second member.
+# TripMember has @@unique([tripId, userId]). If the controller created blindly
+# this would be a P2002 and a 500. Check the member roster afterwards and
+# confirm the invitee appears exactly once.
+POST {{baseUrl}}/invitations/{{inviteToken}}/accept
+Authorization: Bearer {{inviteeToken}}
+
+### It is gone from the invitee's tab. Expect 200 and no longer in the list.
+GET {{baseUrl}}/invitations
+Authorization: Bearer {{inviteeToken}}
+
+### And reads ACCEPTED in the owner's list. Expect 200.
+GET {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+
+### Check the role. Expect 200, and the new member's role is MEMBER.
+# Not OWNER. Accepting an invitation never confers ownership, including the
+# one from section 2 that tried to smuggle `role`.
+GET {{baseUrl}}/trips/{{tripId}}/members
+Authorization: Bearer {{ownerToken}}
+
+
+###############################################################################
+# 6. DECLINE
+#
+# Create a second invitation first - the one above is spent.
+###############################################################################
+
+### A fresh invitation for the decline run. Expect 201.
+# Remove the invitee from the trip in db:studio first, or use a third address.
+# @name declineInvitation
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "decline-me@example.com" }
+
+###
+@declineToken = {{declineInvitation.response.body.invitation.token}}
+
+### Decline it. Expect 204.
+POST {{baseUrl}}/invitations/{{declineToken}}/decline
+Authorization: Bearer {{inviteeToken}}
+
+### >>> Decline it again. Expect 400, NOT 500.
+POST {{baseUrl}}/invitations/{{declineToken}}/decline
+Authorization: Bearer {{inviteeToken}}
+
+### >>> Accept something already declined. Expect 400.
+# The two paths have to agree about what "resolved" means.
+POST {{baseUrl}}/invitations/{{declineToken}}/accept
+Authorization: Bearer {{inviteeToken}}
+
+### >>> Re-invite the address that declined. Expect 201.
+# This is WHY the table has no unique constraint on (tripId, email). If this
+# returns 400, the "already pending" check is not scoped to PENDING and a
+# single "no thanks" has locked that person out of the trip forever.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "decline-me@example.com" }
+
+
+###############################################################################
+# 7. REVOKE
+###############################################################################
+
+### A fresh invitation to revoke. Expect 201.
+# @name revokeTarget
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "revoke-me@example.com" }
+
+###
+@revokeId = {{revokeTarget.response.body.invitation.id}}
+@revokeToken = {{revokeTarget.response.body.invitation.token}}
+
+### Revoke it. Expect 204.
+DELETE {{baseUrl}}/trips/{{tripId}}/invitations/{{revokeId}}
+Authorization: Bearer {{ownerToken}}
+
+### >>> The revoked link no longer works. Expect 404.
+# The row is gone, so the token resolves to nothing. This is the point of
+# revoking being a real DELETE rather than a status flag.
+POST {{baseUrl}}/invitations/{{revokeToken}}/accept
+Authorization: Bearer {{inviteeToken}}
+
+### Revoke it again. Expect 404, NOT 500.
+DELETE {{baseUrl}}/trips/{{tripId}}/invitations/{{revokeId}}
+Authorization: Bearer {{ownerToken}}
+
+### >>> Revoke an ACCEPTED invitation. Expect 400.
+# Use @invitationId from section 1. Deleting it would look like it removed the
+# member it created, and it would not. Refusing says so.
+DELETE {{baseUrl}}/trips/{{tripId}}/invitations/{{invitationId}}
+Authorization: Bearer {{ownerToken}}
+
+### >>> An invitation from ANOTHER trip, through a trip you own. Expect 404.
+# Same scoping rule as every detail endpoint: requireTripRole proved you own
+# the trip in the URL, not that this invitation belongs to it.
+DELETE {{baseUrl}}/trips/{{tripId}}/invitations/00000000-0000-7000-8000-000000000000
+Authorization: Bearer {{ownerToken}}
+
+### A MEMBER revoking. Expect 404.
+DELETE {{baseUrl}}/trips/{{memberOnlyTripId}}/invitations/{{revokeId}}
+Authorization: Bearer {{ownerToken}}
+
+### No auth. Expect 401.
+DELETE {{baseUrl}}/trips/{{tripId}}/invitations/{{revokeId}}
+
+
+###############################################################################
+# 8. EXPIRY
+#
+# The one path you cannot reach by waiting. Set expires_at into the past by
+# hand in db:studio, then run these.
+###############################################################################
+
+### A fresh invitation, then expire it by hand. Expect 201.
+# @name expiryTarget
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "expire-me@example.com" }
+
+###
+@expiredToken = {{expiryTarget.response.body.invitation.token}}
+
+# NOW: open db:studio, find this row in trip_invitations, and set expires_at
+# to yesterday. Leave status as PENDING - that combination is exactly what
+# effectiveStatus exists to reconcile.
+
+### >>> Accepting it. Expect 400 and a message about asking for a new link.
+POST {{baseUrl}}/invitations/{{expiredToken}}/accept
+Authorization: Bearer {{inviteeToken}}
+
+### >>> It now reads EXPIRED in the owner's list. Expect 200.
+# The accept above wrote the status back, since it was already in a write
+# transaction. Confirm the row no longer claims to be PENDING.
+GET {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+
+### >>> It is NOT in the invitee's tab. Expect 200, not in the list.
+# That endpoint filters on expiresAt, so an expired invitation never shows up
+# as something to act on.
+GET {{baseUrl}}/invitations
+Authorization: Bearer {{inviteeToken}}
+
+### >>> Re-inviting that address now works. Expect 201.
+# The "already pending" check excludes expired rows, so a lapsed invitation
+# does not lock someone out.
+POST {{baseUrl}}/trips/{{tripId}}/invitations
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{ "email": "expire-me@example.com" }
