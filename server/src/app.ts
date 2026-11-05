@@ -3,8 +3,9 @@
  * DESCRIPTION: Builds and returns the Express app without starting a server
  *              This is separated from index.ts so that qa/testing modules can call createApp() for its own server instance
  *
- * LAST UPDATED: 2026-10-25 - Add member module routes (Yahya Nawaz)
- * LAST UPDATED: 2026-10-28 - Add reservation module routes (Antony Benitez)
+ * LAST UPDATED: 2026-11-05 - Add invitation module routes (Josh Iehle)
+ *               2026-10-25 - Add member module routes (Yahya Nawaz)
+ *               2026-10-28 - Add reservation module routes (Antony Benitez)
  *               2026-10-18 - Add expense module routes (Josh Iehle)
  *               2026-10-10 - Add trip module routes (Josh Iehle)
  *               2026-09-24 - Add user module routes (Josh Iehle)
@@ -31,8 +32,8 @@ import { itineraryRouter } from './routes/itineraryRoutes';
 import { expenseRouter } from './routes/expenseRoutes';
 import { memberRouter } from './routes/memberRoutes';
 import { activityRouter } from './routes/activityRoutes';
-
-// Reservations module routes
+import { invitationRouter } from './routes/invitationRoutes';
+import { tripInvitationRouter } from './routes/tripInvitationRoutes';
 import { reservationRouter } from './routes/reservationRoutes';
 
 // -------------------- createApp Function --------------------
@@ -72,14 +73,24 @@ export function createApp() {
   app.use('/api/users', requireAuth, userRouter);
   app.use('/api/trips', requireAuth, tripRouter);
 
+  // Invitee-facing. requireAuth and NOTHING else
+  app.use('/api/invitations', requireAuth, invitationRouter);
+
   // Protected Trip Routes (requires auth and trip role)
   app.use('/api/trips/:tripId/expenses', requireAuth, requireTripRole(), expenseRouter);
   app.use('/api/trips/:tripId/members', requireAuth, requireTripRole(), memberRouter);
   app.use('/api/trips/:tripId/activities', requireAuth, requireTripRole(), activityRouter);
   app.use('/api/trips/:tripId/itinerary', requireAuth, requireTripRole(), itineraryRouter);
-
-  // Reservations routes (requires auth and trip role)
   app.use('/api/trips/:tripId/reservations', requireAuth, requireTripRole(), reservationRouter);
+
+  // Owner-facing. Mounted UNDER the trip, with the guard on the mount because
+    // all three routes are owner-only.
+  app.use(
+    '/api/trips/:tripId/invitations',
+    requireAuth,
+    requireTripRole('OWNER'),
+    tripInvitationRouter,
+  );
 
   // -------------------- 404 Not Found Route Handler --------------------
   app.use((_req, res) => {
