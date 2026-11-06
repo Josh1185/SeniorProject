@@ -5,8 +5,9 @@
  *              These are HAND-WRITTEN and mirror what the server sends.
  *              If you change a controller's select or response envelope,
  *              update the matching type here.
- *
- * LAST UPDATED: 2026-11-04 - Add Reservations response types (Antony Benitez)
+
+ * LAST UPDATED: 2026-11-06 - Add Activities detail response types (Brandon Douglass)
+ *               2026-11-04 - Add Reservations response types (Antony Benitez)
  *               2026-11-03 - Add Activities list response types (Brandon Douglass)
  *               2026-10-16 - Add destination address and coordinates (Josh Iehle)
  *               2026-10-11 - File Created (Josh Iehle)
@@ -163,17 +164,36 @@ export interface ActivityListItem {
 export interface ActivityListResponse {
   activities: ActivityListItem[];
 }
+/** Full activity information returned by the detail endpoint. */
+export interface ActivityDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  suggestedDateTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  estimatedCostCents: number | null;
+  createdAt: string;
+  createdBy: {
+    id: string;
+    displayName: string;
+  };
+  voteCount: number;
+  hasVoted: boolean;
+}
+
+/** GET /api/trips/:tripId/activities/:activityId */
+export interface ActivityDetailResponse {
+  activity: ActivityDetail;
+}
 
 // -------------------- Reservations --------------------
 
 /** Reservation categories supported by the backend. */
 export type ReservationType =
-  | 'FLIGHT'
-  | 'HOTEL'
-  | 'RENTAL_CAR'
-  | 'RESTAURANT'
-  | 'ATTRACTION'
-  | 'OTHER';
+  'FLIGHT' | 'HOTEL' | 'RENTAL_CAR' | 'RESTAURANT' | 'ATTRACTION' | 'OTHER';
 
 /** One reservation returned by the list endpoint. */
 export interface ReservationListItem {

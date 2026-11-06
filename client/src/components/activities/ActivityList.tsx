@@ -1,8 +1,8 @@
 /**
  * FILE: ActivityList.tsx
  * DESCRIPTION: Displays activities as desktop rows and mobile cards.
- *
- * LAST UPDATED: 2026-11-03 - File Created (Brandon Douglass)
+ * LAST UPDATED: 2026-11-06 - Add activity selection support (Brandon Douglass)
+ *               2026-11-03 - File Created (Brandon Douglass)
  */
 
 // -------------------- Type imports --------------------
@@ -18,6 +18,9 @@ import { DataList } from '../list/DataList';
 // -------------------- Props interface --------------------
 interface ActivityListProps {
   activities: ActivityListItem[];
+
+  /** Called when a user selects an activity row or mobile card. */
+  onActivityClick?: (activity: ActivityListItem) => void;
 }
 
 // -------------------- Internal Helpers --------------------
@@ -94,13 +97,14 @@ const ACTIVITY_COLUMNS: Column<ActivityListItem>[] = [
 
 // -------------------- Component --------------------
 
-export function ActivityList({ activities }: ActivityListProps) {
+export function ActivityList({ activities, onActivityClick }: ActivityListProps) {
   return (
     <DataList
       items={activities}
       getKey={(activity) => activity.id}
       columns={ACTIVITY_COLUMNS}
       renderCard={(activity) => <ActivityCard activity={activity} />}
+      onItemClick={onActivityClick}
     />
   );
 }
