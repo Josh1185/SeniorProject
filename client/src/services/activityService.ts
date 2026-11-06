@@ -2,11 +2,12 @@
  * FILE: activityService.ts
  * DESCRIPTION: API requests for the Activities feature.
  *
- * LAST UPDATED: 2026-11-03 - File Created (Brandon Douglass)
+ * LAST UPDATED: 2026-11-06 - Add activity detail API request (Brandon Douglass)
+ *               2026-11-03 - File Created (Brandon Douglass)
  */
 
 // -------------------- Type imports --------------------
-import type { ActivityListResponse } from '../types/api';
+import type { ActivityListResponse, ActivityDetailResponse } from '../types/api';
 
 // -------------------- Module and lib imports --------------------
 import { get } from '../lib/api';
@@ -40,4 +41,12 @@ export function fetchActivities(
   filters: ActivityFilters = {},
 ): Promise<ActivityListResponse> {
   return get<ActivityListResponse>(`/trips/${tripId}/activities${toQueryString(filters)}`);
+}
+
+/**
+ * Retrieves the full details of one activity within a trip.
+ * The backend checks that the activity belongs to the requested trip.
+ */
+export function fetchActivity(tripId: string, activityId: string) {
+  return get<ActivityDetailResponse>(`/trips/${tripId}/activities/${activityId}`);
 }
