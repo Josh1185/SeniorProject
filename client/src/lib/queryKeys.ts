@@ -83,3 +83,16 @@ export const reservationKeys = {
   detail: (tripId: string, reservationId: string) =>
     [...reservationKeys.details(tripId), reservationId] as const,
 };
+
+// -------------------- Itinerary Module --------------------
+
+export const itineraryKeys = {
+  all: (tripId: string) =>
+    ['trips', tripId, 'itinerary'] as const,
+
+  lists: (tripId: string) =>
+    [...itineraryKeys.all(tripId), 'list'] as const,
+
+  list: (tripId: string) =>
+    [...itineraryKeys.lists(tripId)] as const,
+};
