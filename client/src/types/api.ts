@@ -211,3 +211,32 @@ export interface ReservationListItem {
 export interface ReservationListResponse {
   reservations: ReservationListItem[];
 }
+
+// -------------------- Itinerary --------------------
+
+/** One standalone itinerary event returned by the itinerary endpoint. */
+export interface ItineraryEvent {
+  id: string;
+  createdById: string;
+  title: string;
+  startDateTime: string;
+  endDateTime: string | null;
+  locationName: string | null;
+  activityId: string | null;
+  reservationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One calendar day in the trip itinerary. */
+export interface ItineraryDay {
+  date: string;
+  events: ItineraryEvent[];
+}
+
+/** GET /api/trips/:tripId/itinerary */
+export interface ItineraryResponse {
+  startDate: string;
+  endDate: string;
+  events: ItineraryEvent[];
+}

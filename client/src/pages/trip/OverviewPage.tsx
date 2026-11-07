@@ -26,12 +26,14 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { useDeleteTrip } from '../../hooks/trips/useDeleteTrip';
 import { useTrip } from '../../hooks/trips/useTrip';
 import { formatDateRange } from '../../lib/format';
+import { useItinerary } from '../../hooks/itinerary/useItinerary';
 
 // -------------------- Component imports --------------------
 import { Avatar } from '../../components/Avatar';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TripFormModal } from '../../components/TripFormModal';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
+import { ItineraryList } from '../../components/itinerary/ItineraryList';
 
 // -------------------- Internal Components --------------------
 
@@ -71,6 +73,7 @@ export function OverviewPage() {
 
   // ----- 2. Hook usage -----
   const trip = useTrip(tripId);
+  const itinerary = useItinerary(tripId);
   const deleteTrip = useDeleteTrip(tripId ?? '');
 
   // ----- 3. Loading and error states -----
@@ -186,9 +189,35 @@ export function OverviewPage() {
           <NotBuiltYet feature="Activity voting" />
         </Card>
 
-        <Card title="Upcoming Itinerary">
-          <NotBuiltYet feature="The itinerary" />
-        </Card>
+        <Card title="Itinerary">
+  {itinerary.isLoading && (
+    <p className="text-sm text-ink-700">Loading itinerary…</p>
+  )}
+
+  {itinerary.error && (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+      <p className="text-sm text-red-700">
+        {(itinerary.error as Error).message}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => void itinerary.refetch()}
+        className="mt-2 cursor-pointer text-sm text-red-700 underline"
+      >
+        Try again
+      </button>
+    </div>
+  )}
+
+  {!itinerary.isLoading && !itinerary.error && itinerary.data && (
+  <ItineraryList
+    startDate={itinerary.data.startDate}
+    endDate={itinerary.data.endDate}
+    events={itinerary.data.events}
+  />
+)}
+</Card>
 
         <Card title="Expenses">
           <NotBuiltYet feature="Expense tracking" />

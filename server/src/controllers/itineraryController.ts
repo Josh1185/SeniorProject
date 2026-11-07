@@ -15,7 +15,7 @@ import { prisma } from '../lib/prisma';
 import badRequest from '../utils/badRequest';
 import unauthorized from '../utils/unauthorized';
 import notFound from '../utils/notFound';
-import { groupEventsByDay } from '../utils/itineraryGrouping';
+
 
 // -------------------- Schema imports --------------------
 import {
@@ -31,6 +31,7 @@ import {
  *
  * Mounted behind requireAuth and requireTripRole().
  */
+
 export async function getItinerary(req: Request, res: Response) {
   // ----- 1. Confirm the user is signed in -----
   if (!req.user) {
@@ -53,7 +54,7 @@ export async function getItinerary(req: Request, res: Response) {
     },
   });
 
-  // ----- 4. Retrieve the trip's itinerary events -----
+  // ----- 4. Retrieve all itinerary events -----
   const events = await prisma.itineraryEvent.findMany({
     where: { tripId },
     orderBy: { startDateTime: 'asc' },
@@ -71,16 +72,14 @@ export async function getItinerary(req: Request, res: Response) {
     },
   });
 
-  // ----- 5. Convert trip dates to YYYY-MM-DD -----
-  const startDate = trip.startDate.toISOString().slice(0, 10);
-  const endDate = trip.endDate.toISOString().slice(0, 10);
-
-  // ----- 6. Group events into every day of the trip -----
-  const days = groupEventsByDay(startDate, endDate, events);
-
-  // ----- 7. Return the itinerary -----
-  res.json({ days });
+  // ----- 5. Return trip dates and events -----
+  res.json({
+    startDate: trip.startDate.toISOString().slice(0, 10),
+    endDate: trip.endDate.toISOString().slice(0, 10),
+    events,
+  });
 }
+
 
 // -------------------- GET /api/trips/:tripId/itinerary/:itineraryEventId --------------------
 
