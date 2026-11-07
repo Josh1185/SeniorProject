@@ -1,12 +1,15 @@
+import { useState } from 'react';
 
 import type { ItineraryDay, ItineraryEvent } from '../../types/api';
 
 import { EmptyState } from '../list/EmptyState';
+import { ItineraryEventDetailModal } from './ItineraryEventDetailModal';
 import { formatDate } from '../../lib/format';
 
 // -------------------- Props Interface --------------------
 
 interface ItineraryListProps {
+  tripId: string | undefined;
   startDate: string;
   endDate: string;
   events: ItineraryEvent[];
@@ -72,10 +75,19 @@ function formatEventTime(value: string): string {
 // -------------------- Component --------------------
 
 export function ItineraryList({
+  tripId,
   startDate,
   endDate,
   events,
 }: ItineraryListProps) {
+  const [selectedEventId, setSelectedEventId] = useState<
+    string | undefined
+  >(undefined);
+
+  const selectedEvent = events.find(
+    (event) => event.id === selectedEventId,
+  );
+
   const days = getTripDays(startDate, endDate);
 
   const daysByDate = new Map(
@@ -125,9 +137,11 @@ export function ItineraryList({
             ) : (
               <div className="space-y-3">
                 {sortedEvents.map((event) => (
-                  <article
+                  <button
+                    type="button"
                     key={event.id}
-                    className="rounded-md bg-ink-100 p-4"
+                    onClick={() => setSelectedEventId(event.id)}
+                    className="w-full rounded-md bg-ink-100 p-4 text-left transition hover:bg-ink-200 focus:outline-none focus:ring-2 focus:ring-ink-500"
                   >
                     <h4 className="font-medium text-ink-900">
                       {event.title}
@@ -144,13 +158,19 @@ export function ItineraryList({
                         {event.locationName}
                       </p>
                     )}
-                  </article>
+                  </button>
                 ))}
               </div>
             )}
           </section>
         );
       })}
+        <ItineraryEventDetailModal
+          tripId={tripId}
+          itineraryEventId={selectedEventId}
+          eventTitle={selectedEvent?.title ?? 'Itinerary Event'}
+          onClose={() => setSelectedEventId(undefined)}
+        />
     </div>
   );
 }

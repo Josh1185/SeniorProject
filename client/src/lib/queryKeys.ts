@@ -95,4 +95,10 @@ export const itineraryKeys = {
 
   list: (tripId: string) =>
     [...itineraryKeys.lists(tripId)] as const,
+
+  details: (tripId: string) =>
+    [...itineraryKeys.all(tripId), 'detail'] as const,
+
+  detail: (tripId: string, itineraryEventId: string) =>
+    [...itineraryKeys.details(tripId), itineraryEventId] as const,
 };

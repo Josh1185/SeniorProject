@@ -220,3 +220,22 @@ export interface ItineraryResponse {
   endDate: string;
   events: ItineraryEvent[];
 }
+
+export interface ItineraryEventDetail {
+  id: string;
+  createdById: string;
+  title: string;
+  description: string | null;
+  startDateTime: string;
+  endDateTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ItineraryEventDetailResponse {
+  itineraryEvent: ItineraryEventDetail;
+}

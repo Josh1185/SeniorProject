@@ -212,6 +212,7 @@ export function OverviewPage() {
 
   {!itinerary.isLoading && !itinerary.error && itinerary.data && (
   <ItineraryList
+    tripId={tripId}
     startDate={itinerary.data.startDate}
     endDate={itinerary.data.endDate}
     events={itinerary.data.events}
