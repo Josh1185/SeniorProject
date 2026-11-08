@@ -239,3 +239,20 @@ export interface ItineraryEventDetail {
 export interface ItineraryEventDetailResponse {
   itineraryEvent: ItineraryEventDetail;
 }
+
+export interface CreateItineraryEventBody {
+  title: string;
+  description?: string | null;
+  startDateTime: string;
+  endDateTime?: string | null;
+  timeZone: string;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export type UpdateItineraryEventBody =
+  Omit<Partial<CreateItineraryEventBody>, 'timeZone'> & {
+    timeZone: string;
+  };
