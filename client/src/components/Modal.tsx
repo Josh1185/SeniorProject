@@ -146,7 +146,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         'h-dvh max-h-dvh w-full max-w-none rounded-none',
 
         // Desktop: a centred card that only grows as tall as it needs to.
-        'sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-md sm:rounded-xl sm:shadow-xl',
+       'sm:h-fit sm:min-h-0 sm:max-h-[85vh] sm:w-full sm:max-w-md sm:rounded-xl sm:shadow-xl',
       ].join(' ')}
     >
       {/* shrink-0 stops the header collapsing when the body is tall. */}
@@ -176,7 +176,9 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
       {/* overflow-y-auto on the BODY, not the dialog, so a long form scrolls
           under a fixed header rather than scrolling the title out of view. */}
-      <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+      <div className="min-h-0 flex-none overflow-y-auto px-6 py-5">
+  {children}
+</div>
     </dialog>
   );
 }

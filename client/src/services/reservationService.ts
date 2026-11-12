@@ -2,12 +2,14 @@
  * FILE: reservationService.ts
  * DESCRIPTION: API requests for the Reservations feature.
  *
- * LAST UPDATED: 2026-11-04 - File Created (Antony Benitez)
+ * LAST UPDATED: 2026-11-12 - Add reservation detail GET (Antony Benitez)
+ *               2026-11-04 - File Created (Antony Benitez)
  */
 
 // -------------------- Type imports --------------------
 
 import type {
+  ReservationDetailResponse,
   ReservationListResponse,
   ReservationType,
 } from '../types/api';
@@ -50,5 +52,15 @@ export function fetchReservations(
 ): Promise<ReservationListResponse> {
   return get<ReservationListResponse>(
     `/trips/${tripId}/reservations${toQueryString(filters)}`,
+  );
+}
+
+/** GET /api/trips/:tripId/reservations/:reservationId */
+export function fetchReservation(
+  tripId: string,
+  reservationId: string,
+): Promise<ReservationDetailResponse> {
+  return get<ReservationDetailResponse>(
+    `/trips/${tripId}/reservations/${reservationId}`,
   );
 }
