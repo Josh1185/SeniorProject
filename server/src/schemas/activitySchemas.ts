@@ -2,7 +2,8 @@
  * FILE: activitySchemas.ts
  * DESCRIPTION: Zod validation for creating, updating, searching, and sorting activities.
  *
- * LAST UPDATED: 2026-10-30 - Add create and update activity schemas (Brandon Douglass)
+ * LAST UPDATED: 2026-11-12 - Support suggested date/time for activities (Brandon Douglass)
+ *               2026-10-30 - Add create and update activity schemas (Brandon Douglass)
  *               2026-10-24 - Code Review Refactor (Josh Iehle)
  *               2026-10-19 - Add activity list query schema (Brandon Douglass)
  */
@@ -16,6 +17,7 @@ import { z } from 'zod';
 const activityFields = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
   description: z.string().trim().max(2000).optional(),
+  suggestedDateTime: z.iso.datetime({ offset: true }).nullable().optional(),
   locationName: z.string().trim().max(200).nullable().optional(),
   locationAddress: z.string().trim().max(300).nullable().optional(),
   latitude: z.number().min(-90).max(90).nullable().optional(),
