@@ -2,9 +2,10 @@
  * FILE: ReservationsPage.tsx
  * DESCRIPTION: Displays a trip's reservations with search,
  *              type filtering, sorting, loading/error handling,
- *              and empty states.
+ *              empty states, and a reservation detail modal.
  *
- * LAST UPDATED: 2026-11-04 - Build Reservations list page (Antony Benitez)
+ * LAST UPDATED: 2026-11-12 - Add reservation detail modal (Antony Benitez)
+ *               2026-11-04 - Build Reservations list page (Antony Benitez)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
@@ -21,6 +22,7 @@ import type { Column } from '../../components/list/listTypes';
 
 // -------------------- Module and lib imports --------------------
 
+import { useState } from 'react';
 import { useParams } from 'react-router';
 import { unpackSort } from '../../lib/listParams';
 import { formatCents } from '../../lib/format';
@@ -36,12 +38,10 @@ import { DataList } from '../../components/list/DataList';
 import { EmptyState } from '../../components/list/EmptyState';
 import { ListToolbar } from '../../components/list/ListToolbar';
 
+import { ReservationDetailModal } from '../../components/reservations/ReservationDetailModal';
+
 // -------------------- List Defaults --------------------
 
-/**
- * Search, reservation type, and sorting are stored in the URL.
- * By default, show all reservations ordered by start date.
- */
 const RESERVATION_LIST_DEFAULTS = {
   search: '',
   type: '',
@@ -73,7 +73,6 @@ const SORT_OPTIONS = [
 
 // -------------------- Display Helpers --------------------
 
-/** Converts backend reservation type values to readable labels. */
 function formatReservationType(type: ReservationType): string {
   switch (type) {
     case 'FLIGHT':
@@ -96,7 +95,6 @@ function formatReservationType(type: ReservationType): string {
   }
 }
 
-/** Formats an ISO date/time string for display. */
 function formatDateTime(value: string | null): string {
   if (!value) {
     return '—';
@@ -111,7 +109,6 @@ function formatDateTime(value: string | null): string {
   });
 }
 
-/** Formats optional reservation costs using the shared money helper. */
 function formatReservationCost(costCents: number | null): string {
   if (costCents === null) {
     return '—';
@@ -122,10 +119,6 @@ function formatReservationCost(costCents: number | null): string {
 
 // -------------------- Table Columns --------------------
 
-/**
- * DataList uses these columns on desktop.
- * On smaller screens, it uses renderCard instead.
- */
 const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
   {
     header: 'TITLE',
@@ -143,6 +136,7 @@ const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
       </div>
     ),
   },
+
   {
     header: 'TYPE',
     cell: (reservation) => (
@@ -151,6 +145,7 @@ const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
       </span>
     ),
   },
+
   {
     header: 'START',
     cell: (reservation) => (
@@ -159,6 +154,7 @@ const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
       </span>
     ),
   },
+
   {
     header: 'LOCATION',
     cell: (reservation) => (
@@ -167,6 +163,7 @@ const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
       </span>
     ),
   },
+
   {
     header: 'COST',
     cell: (reservation) => (
@@ -223,6 +220,7 @@ function renderReservationCard(reservation: ReservationListItem) {
             <p className="text-xs text-ink-700">
               Confirmation Number
             </p>
+
             <p className="mt-1 break-all text-ink-900">
               {reservation.confirmationNumber}
             </p>
@@ -250,7 +248,12 @@ export function ReservationsPage() {
 
   const { tripId } = useParams();
 
-  // ----- 2. Read filters and sort values from the URL -----
+  // ----- 2. Track the reservation selected for the modal -----
+
+  const [selectedReservation, setSelectedReservation] =
+    useState<ReservationListItem | null>(null);
+
+  // ----- 3. Read filters and sorting from the URL -----
 
   const list = useListQueryState({
     defaults: RESERVATION_LIST_DEFAULTS,
@@ -262,7 +265,7 @@ export function ReservationsPage() {
     'asc',
   );
 
-  // ----- 3. Build API filters -----
+  // ----- 4. Build API filters -----
 
   const filters: ReservationFilters = {
     search: list.values.search || undefined,
@@ -276,18 +279,17 @@ export function ReservationsPage() {
     order: order as ReservationFilters['order'],
   };
 
-  // ----- 4. Fetch reservations -----
+  // ----- 5. Fetch reservations -----
 
   const reservations = useReservations(tripId, filters);
 
   const results = reservations.data?.reservations ?? [];
 
-  // Search or type selection means we are filtering the list.
   const isFiltering = Boolean(
     list.values.search.trim() || list.values.type,
   );
 
-  // ----- 5. Render the page -----
+  // ----- 6. Render the page -----
 
   return (
     <div>
@@ -362,7 +364,7 @@ export function ReservationsPage() {
             />
           )}
 
-        {/* Empty state: search or type returned no matches */}
+        {/* Empty state: no search or filter matches */}
         {!reservations.isLoading &&
           !reservations.error &&
           results.length === 0 &&
@@ -392,6 +394,7 @@ export function ReservationsPage() {
                 getKey={(reservation) => reservation.id}
                 columns={RESERVATION_COLUMNS}
                 renderCard={renderReservationCard}
+                onItemClick={setSelectedReservation}
               />
 
               <p className="mt-4 text-sm text-ink-700">
@@ -403,6 +406,13 @@ export function ReservationsPage() {
             </>
           )}
       </div>
+
+      {/* R4: Selected reservation detail modal */}
+      <ReservationDetailModal
+        tripId={tripId}
+        reservation={selectedReservation}
+        onClose={() => setSelectedReservation(null)}
+      />
     </div>
   );
 }

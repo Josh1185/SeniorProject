@@ -211,3 +211,28 @@ export interface ReservationListItem {
 export interface ReservationListResponse {
   reservations: ReservationListItem[];
 }
+
+// -------------------- Reservation Detail (R4) --------------------
+
+/** Full reservation information returned by the detail endpoint. */
+export interface ReservationDetail {
+  id: string;
+  type: ReservationType;
+  name: string;
+  confirmationNumber: string | null;
+  startDateTime: string | null;
+  endDateTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  costCents: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/trips/:tripId/reservations/:reservationId */
+export interface ReservationDetailResponse {
+  reservation: ReservationDetail;
+}
