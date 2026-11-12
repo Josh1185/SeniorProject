@@ -2,7 +2,8 @@
  * FILE: format.ts
  * DESCRIPTION: Display formatting shared across features.
  *
- * LAST UPDATED: 2026-10-13 - File Created (Josh Iehle)
+ * LAST UPDATED: 2026-11-12 - Add local date/time conversion utilities (Brandon Douglass)
+                 2026-10-13 - File Created (Josh Iehle)
  */
 
 /**
@@ -41,6 +42,40 @@ export function formatDateRange(start: string, end: string): string {
 export function toDateInputValue(value: string | undefined | null): string {
   if (!value) return '';
   return value.split('T')[0] ?? '';
+}
+
+/**
+ * Converts an API timestamp into the local date/time format expected by
+ * <input type="datetime-local">.
+ */
+export function toDateTimeInputValue(value: string | undefined | null): string {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Converts a local datetime input value into an ISO timestamp with timezone.
+ * Returns null when the field is empty.
+ */
+export function toISOStringFromLocal(value: string): string | null {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid date/time.');
+  }
+
+  return date.toISOString();
 }
 
 /**
