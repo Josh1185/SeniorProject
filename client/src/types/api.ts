@@ -236,3 +236,27 @@ export interface ReservationDetail {
 export interface ReservationDetailResponse {
   reservation: ReservationDetail;
 }
+
+// -------------------- Reservation Writes (R5) --------------------
+
+/** POST /api/trips/:tripId/reservations */
+export interface CreateReservationBody {
+  type: ReservationType;
+  name: string;
+  confirmationNumber?: string | null;
+  startDateTime?: string | null;
+  endDateTime?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  costCents?: number | null;
+  notes?: string | null;
+}
+
+/**
+ * PATCH /api/trips/:tripId/reservations/:reservationId
+ * Omitted fields remain unchanged.
+ * Sending null clears a nullable field.
+ */
+export type UpdateReservationBody = Partial<CreateReservationBody>;

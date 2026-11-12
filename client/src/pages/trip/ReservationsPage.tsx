@@ -1,17 +1,17 @@
 /**
  * FILE: ReservationsPage.tsx
- * DESCRIPTION: Displays a trip's reservations with search,
- *              type filtering, sorting, loading/error handling,
- *              empty states, and a reservation detail modal.
+ * DESCRIPTION: Displays, creates, edits, and deletes reservations.
  *
- * LAST UPDATED: 2026-11-12 - Add reservation detail modal (Antony Benitez)
- *               2026-11-04 - Build Reservations list page (Antony Benitez)
+ * LAST UPDATED: 2026-11-12 - Add R5 write UI (Antony Benitez)
+ *               2026-11-12 - Add R4 detail modal (Antony Benitez)
+ *               2026-11-04 - Build R3 list page (Antony Benitez)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
 
 import type {
+  ReservationDetail,
   ReservationListItem,
   ReservationType,
 } from '../../types/api';
@@ -24,12 +24,14 @@ import type { Column } from '../../components/list/listTypes';
 
 import { useState } from 'react';
 import { useParams } from 'react-router';
+
 import { unpackSort } from '../../lib/listParams';
 import { formatCents } from '../../lib/format';
 
 // -------------------- Hook imports --------------------
 
 import { useReservations } from '../../hooks/reservations/useReservations';
+import { useDeleteReservation } from '../../hooks/reservations/useDeleteReservation';
 import { useListQueryState } from '../../hooks/useListQueryState';
 
 // -------------------- Component imports --------------------
@@ -37,8 +39,11 @@ import { useListQueryState } from '../../hooks/useListQueryState';
 import { DataList } from '../../components/list/DataList';
 import { EmptyState } from '../../components/list/EmptyState';
 import { ListToolbar } from '../../components/list/ListToolbar';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 import { ReservationDetailModal } from '../../components/reservations/ReservationDetailModal';
+
+import { ReservationFormModal } from '../../components/reservations/ReservationFormModal';
 
 // -------------------- List Defaults --------------------
 
@@ -77,19 +82,14 @@ function formatReservationType(type: ReservationType): string {
   switch (type) {
     case 'FLIGHT':
       return 'Flight';
-
     case 'HOTEL':
       return 'Hotel';
-
     case 'RENTAL_CAR':
       return 'Rental Car';
-
     case 'RESTAURANT':
       return 'Restaurant';
-
     case 'ATTRACTION':
       return 'Attraction';
-
     case 'OTHER':
       return 'Other';
   }
@@ -117,7 +117,7 @@ function formatReservationCost(costCents: number | null): string {
   return formatCents(costCents);
 }
 
-// -------------------- Table Columns --------------------
+// -------------------- Desktop Table Columns --------------------
 
 const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
   {
@@ -179,7 +179,6 @@ const RESERVATION_COLUMNS: Column<ReservationListItem>[] = [
 function renderReservationCard(reservation: ReservationListItem) {
   return (
     <div className="rounded-lg border border-ink-300 bg-white p-4">
-      {/* Title and reservation type */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="text-base font-semibold text-ink-900">
           {reservation.name}
@@ -190,7 +189,6 @@ function renderReservationCard(reservation: ReservationListItem) {
         </span>
       </div>
 
-      {/* Reservation information */}
       <div className="mt-4 space-y-3 text-sm">
         <div>
           <p className="text-xs text-ink-700">Start</p>
@@ -248,12 +246,27 @@ export function ReservationsPage() {
 
   const { tripId } = useParams();
 
-  // ----- 2. Track the reservation selected for the modal -----
+  // ----- 2. Selected reservation for the detail modal -----
 
   const [selectedReservation, setSelectedReservation] =
     useState<ReservationListItem | null>(null);
 
-  // ----- 3. Read filters and sorting from the URL -----
+  // ----- 3. Create/Edit form state -----
+
+  const [formOpen, setFormOpen] = useState(false);
+
+  const [editingReservation, setEditingReservation] =
+    useState<ReservationDetail | null>(null);
+
+  // ----- 4. Delete confirmation state -----
+
+  const [deletingReservation, setDeletingReservation] =
+    useState<ReservationDetail | null>(null);
+
+  const [deleteError, setDeleteError] =
+    useState<string | null>(null);
+
+  // ----- 5. Read filters from the URL -----
 
   const list = useListQueryState({
     defaults: RESERVATION_LIST_DEFAULTS,
@@ -265,8 +278,6 @@ export function ReservationsPage() {
     'asc',
   );
 
-  // ----- 4. Build API filters -----
-
   const filters: ReservationFilters = {
     search: list.values.search || undefined,
 
@@ -275,11 +286,10 @@ export function ReservationsPage() {
       : undefined,
 
     sort: sort as ReservationFilters['sort'],
-
     order: order as ReservationFilters['order'],
   };
 
-  // ----- 5. Fetch reservations -----
+  // ----- 6. Fetch reservations -----
 
   const reservations = useReservations(tripId, filters);
 
@@ -289,19 +299,88 @@ export function ReservationsPage() {
     list.values.search.trim() || list.values.type,
   );
 
-  // ----- 6. Render the page -----
+  // ----- 7. Delete mutation -----
+
+  const deleteMutation = useDeleteReservation(
+    tripId ?? '',
+    deletingReservation?.id ?? '',
+  );
+
+  // ----- 8. Open a blank Create form -----
+
+  function openCreateForm() {
+    setEditingReservation(null);
+    setFormOpen(true);
+  }
+
+  // ----- 9. Open an existing reservation for editing -----
+
+  function openEditForm(reservation: ReservationDetail) {
+    setSelectedReservation(null);
+    setEditingReservation(reservation);
+    setFormOpen(true);
+  }
+
+  // ----- 10. Close the Create/Edit form -----
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingReservation(null);
+  }
+
+  // ----- 11. Open Delete confirmation -----
+
+  function openDeleteConfirmation(reservation: ReservationDetail) {
+    setSelectedReservation(null);
+    setDeletingReservation(reservation);
+    setDeleteError(null);
+  }
+
+  // ----- 12. Delete the selected reservation -----
+
+  async function confirmDelete() {
+    if (!deletingReservation) {
+      return;
+    }
+
+    try {
+      await deleteMutation.mutateAsync();
+
+      setDeletingReservation(null);
+      setDeleteError(null);
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to delete the reservation.',
+      );
+    }
+  }
+
+  // ----- 13. Render -----
 
   return (
     <div>
-      {/* Page heading */}
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-900">
-          Trip Reservations
-        </h1>
+      {/* Heading and Add button */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-900">
+            Trip Reservations
+          </h1>
 
-        <p className="mt-1 text-sm text-ink-700">
-          View and organize reservations for this trip.
-        </p>
+          <p className="mt-1 text-sm text-ink-700">
+            View and organize reservations for this trip.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={openCreateForm}
+          disabled={!tripId}
+          className="cursor-pointer rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+        >
+          Add Reservation
+        </button>
       </div>
 
       {/* Search, type filtering, and sorting */}
@@ -327,16 +406,16 @@ export function ReservationsPage() {
         />
       </div>
 
-      {/* Reservation content */}
+      {/* Reservation list */}
       <div className="mt-6">
-        {/* Loading state */}
+        {/* Loading */}
         {reservations.isLoading && (
           <p className="py-12 text-center text-ink-700">
             Loading reservations…
           </p>
         )}
 
-        {/* Error state with retry */}
+        {/* Error */}
         {reservations.error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-5">
             <p className="text-sm text-red-700">
@@ -353,7 +432,7 @@ export function ReservationsPage() {
           </div>
         )}
 
-        {/* Empty state: trip has no reservations */}
+        {/* No reservations */}
         {!reservations.isLoading &&
           !reservations.error &&
           results.length === 0 &&
@@ -364,7 +443,7 @@ export function ReservationsPage() {
             />
           )}
 
-        {/* Empty state: no search or filter matches */}
+        {/* No matching results */}
         {!reservations.isLoading &&
           !reservations.error &&
           results.length === 0 &&
@@ -384,7 +463,7 @@ export function ReservationsPage() {
             />
           )}
 
-        {/* Reservation results */}
+        {/* Results */}
         {!reservations.isLoading &&
           !reservations.error &&
           results.length > 0 && (
@@ -407,11 +486,45 @@ export function ReservationsPage() {
           )}
       </div>
 
-      {/* R4: Selected reservation detail modal */}
+      {/* R4 Detail Modal with R5 Edit/Delete actions */}
       <ReservationDetailModal
         tripId={tripId}
         reservation={selectedReservation}
         onClose={() => setSelectedReservation(null)}
+        onEdit={openEditForm}
+        onDelete={openDeleteConfirmation}
+      />
+
+      {/* R5 Create/Edit Form */}
+      {formOpen && (
+        <ReservationFormModal
+          key={editingReservation?.id ?? 'new'}
+          open={formOpen}
+          tripId={tripId}
+          reservation={editingReservation ?? undefined}
+          onClose={closeForm}
+        />
+      )}
+
+      {/* R5 Delete Confirmation */}
+      <ConfirmDialog
+        open={deletingReservation !== null}
+        onClose={() => {
+          if (!deleteMutation.isPending) {
+            setDeletingReservation(null);
+            setDeleteError(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Reservation"
+        description={
+          deleteError
+            ? `Unable to delete: ${deleteError}`
+            : `Are you sure you want to delete "${deletingReservation?.name ?? 'this reservation'}"? This action cannot be undone.`
+        }
+        confirmLabel="Delete Reservation"
+        destructive
+        pending={deleteMutation.isPending}
       />
     </div>
   );

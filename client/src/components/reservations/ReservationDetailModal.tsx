@@ -1,15 +1,14 @@
-
 /**
  * FILE: ReservationDetailModal.tsx
- * DESCRIPTION: Read-only detail modal for a reservation.
- *              Uses the shared DetailModal and DetailField components.
+ * DESCRIPTION: Reservation detail view with edit and delete actions.
  *
- * LAST UPDATED: 2026-11-12 - File Created (Antony Benitez)
+ * LAST UPDATED: 2026-11-12 - Add R5 actions (Antony Benitez)
  */
 
 // -------------------- Type imports --------------------
 
 import type {
+  ReservationDetail,
   ReservationListItem,
   ReservationType,
 } from '../../types/api';
@@ -26,12 +25,14 @@ import { useReservation } from '../../hooks/reservations/useReservation';
 
 import { formatCents } from '../../lib/format';
 
-// -------------------- Props interface --------------------
+// -------------------- Props --------------------
 
 interface ReservationDetailModalProps {
   tripId: string | undefined;
   reservation: ReservationListItem | null;
   onClose: () => void;
+  onEdit: (reservation: ReservationDetail) => void;
+  onDelete: (reservation: ReservationDetail) => void;
 }
 
 // -------------------- Display Helpers --------------------
@@ -40,19 +41,14 @@ function formatReservationType(type: ReservationType): string {
   switch (type) {
     case 'FLIGHT':
       return 'Flight';
-
     case 'HOTEL':
       return 'Hotel';
-
     case 'RENTAL_CAR':
       return 'Rental Car';
-
     case 'RESTAURANT':
       return 'Restaurant';
-
     case 'ATTRACTION':
       return 'Attraction';
-
     case 'OTHER':
       return 'Other';
   }
@@ -78,8 +74,10 @@ export function ReservationDetailModal({
   tripId,
   reservation,
   onClose,
+  onEdit,
+  onDelete,
 }: ReservationDetailModalProps) {
-  // ----- 1. Fetch details for the selected reservation -----
+  // ----- 1. Fetch full reservation details -----
 
   const detailQuery = useReservation(
     tripId,
@@ -88,7 +86,29 @@ export function ReservationDetailModal({
 
   const detail = detailQuery.data?.reservation;
 
-  // ----- 2. Render the modal -----
+  // ----- 2. Edit and Delete buttons -----
+
+  const actions = detail ? (
+    <>
+      <button
+        type="button"
+        onClick={() => onEdit(detail)}
+        className="cursor-pointer rounded-md border border-ink-300 px-4 py-2 text-sm font-medium text-ink-900 hover:bg-ink-100"
+      >
+        Edit Reservation
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onDelete(detail)}
+        className="cursor-pointer rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+      >
+        Delete Reservation
+      </button>
+    </>
+  ) : undefined;
+
+  // ----- 3. Render -----
 
   return (
     <DetailModal
@@ -97,6 +117,7 @@ export function ReservationDetailModal({
       title={reservation?.name ?? 'Reservation Details'}
       isLoading={reservation !== null && detailQuery.isPending}
       error={reservation !== null ? detailQuery.error : null}
+      actions={actions}
     >
       {detail && (
         <>
@@ -108,6 +129,7 @@ export function ReservationDetailModal({
             {detail.confirmationNumber}
           </DetailField>
 
+          {/* Provider is not yet stored by the backend. */}
           <DetailField label="Provider">
             Not recorded
           </DetailField>
