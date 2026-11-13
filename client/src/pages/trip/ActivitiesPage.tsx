@@ -3,14 +3,17 @@
  * DESCRIPTION: Displays a trip's activities with search, sorting,
  *              loading/error handling, and empty states.
  *
- * LAST UPDATED: 2026-11-03 - Build Activities list page (Brandon Douglass)
+ * LAST UPDATED: 2026-11-06 - Connect Activities detail modal (Brandon Douglass)
+ *               2026-11-03 - Build Activities list page (Brandon Douglass)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
+import type { ActivityListItem } from '../../types/api';
 import type { ActivityFilters } from '../../services/activityService';
 
 // -------------------- Module and lib imports --------------------
+import { useState } from 'react';
 import { useParams } from 'react-router';
 import { unpackSort } from '../../lib/listParams';
 
@@ -19,6 +22,7 @@ import { useActivities } from '../../hooks/activities/useActivities';
 import { useListQueryState } from '../../hooks/useListQueryState';
 
 // -------------------- Component imports --------------------
+import { ActivityDetailModal } from '../../components/activities/ActivityDetailModal';
 import { ActivityList } from '../../components/activities/ActivityList';
 import { EmptyState } from '../../components/list/EmptyState';
 import { ListToolbar } from '../../components/list/ListToolbar';
@@ -51,6 +55,10 @@ const SORT_OPTIONS = [
 export function ActivitiesPage() {
   // ----- 1. Identify the current trip -----
   const { tripId } = useParams();
+
+  // Tracks the activity selected from the list.
+  // null means no detail modal is open.
+  const [selectedActivity, setSelectedActivity] = useState<ActivityListItem | null>(null);
 
   // ----- 2. Read search and sort values from the URL -----
   const list = useListQueryState({
@@ -142,7 +150,7 @@ export function ActivitiesPage() {
         {/* Activity results */}
         {!activities.isLoading && !activities.error && results.length > 0 && (
           <>
-            <ActivityList activities={results} />
+            <ActivityList activities={results} onActivityClick={setSelectedActivity} />
 
             <p className="mt-4 text-sm text-ink-700">
               Showing {results.length} {results.length === 1 ? 'activity' : 'activities'}
@@ -150,6 +158,12 @@ export function ActivitiesPage() {
           </>
         )}
       </div>
+      {/* Display the full details of the selected activity. */}
+      <ActivityDetailModal
+        tripId={tripId}
+        activity={selectedActivity}
+        onClose={() => setSelectedActivity(null)}
+      />
     </div>
   );
 }
