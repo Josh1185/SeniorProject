@@ -5,9 +5,10 @@
 
 // -------------------- Type imports --------------------
 import type { ItineraryEventDetail } from '../../types/api';
+import type { LocationValue } from '../../lib/location';
 
 // -------------------- Module and lib imports --------------------
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { readFormValues, type FormState } from '../../lib/formState';
 
 // -------------------- Component imports --------------------
@@ -17,6 +18,8 @@ import { TextArea } from '../form/TextArea';
 import { DateTimeInput } from '../form/DateTimeInput';
 import { useCreateItineraryEvent } from '../../hooks/itinerary/useCreateItineraryEvent';
 import { useUpdateItineraryEvent } from '../../hooks/itinerary/useUpdateItineraryEvent';
+import { emptyLocation } from '../../lib/location';
+import { LocationPicker } from '../LocationPicker';
 
 // -------------------- Types --------------------
 
@@ -26,7 +29,6 @@ interface ItineraryEventFormValues extends Record<string, string> {
   startDateTime: string;
   endDateTime: string;
   locationName: string;
-  locationAddress: string;
 }
 
 interface ItineraryEventFormModalProps {
@@ -44,7 +46,6 @@ const FIELD_NAMES = [
   'startDateTime',
   'endDateTime',
   'locationName',
-  'locationAddress',
 ] as const;
 
 // -------------------- Date helpers --------------------
@@ -92,7 +93,6 @@ function getInitialValues(
     startDateTime: toLocalDateTimeInput(event?.startDateTime),
     endDateTime: toLocalDateTimeInput(event?.endDateTime),
     locationName: event?.locationName ?? '',
-    locationAddress: event?.locationAddress ?? '',
   };
 }
 
@@ -119,6 +119,13 @@ export function ItineraryEventFormModal({
   );
 
   const isEdit = Boolean(event);
+  const [location, setLocation] = useState<LocationValue>(() => ({
+    ...emptyLocation,
+    label: event?.locationAddress ?? '',
+    fullAddress: event?.locationAddress ?? null,
+    latitude: event?.latitude ?? null,
+    longitude: event?.longitude ?? null,
+  }));
 
   const [state, submitAction, isPending] = useActionState(
     async (
@@ -188,7 +195,9 @@ export function ItineraryEventFormModal({
             ? toIsoDateTime(values.endDateTime)
             : null,
           locationName: values.locationName || null,
-          locationAddress: values.locationAddress || null,
+          locationAddress: location.label.trim() || null,
+          latitude: location.latitude,
+          longitude: location.longitude,
         };
 
         if (event) {
@@ -248,7 +257,11 @@ export function ItineraryEventFormModal({
           label="End date and time"
           name="endDateTime"
           mode="datetime"
-          min={state.values.startDateTime || undefined}
+          min={
+            state.values.startDateTime
+            ? `${state.values.startDateTime.slice(0, 10)}T00:00`
+            : undefined
+          }
           defaultValue={state.values.endDateTime}
           error={state.fieldErrors?.endDateTime}
           hint="Optional. Must be after the start date and time."
@@ -262,12 +275,13 @@ export function ItineraryEventFormModal({
           placeholder="e.g. Central Park"
         />
 
-        <TextField
+        <LocationPicker
           label="Address"
-          name="locationAddress"
-          maxLength={300}
-          defaultValue={state.values.locationAddress}
-          placeholder="Street address (optional)"
+          searchFor="address"
+          value={location}
+          onChange={setLocation}
+          placeholder="Search for an address"
+          hint="Optional. Pick a result to save its address and coordinates."
         />
 
         {state.formError && (
