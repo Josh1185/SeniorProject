@@ -211,3 +211,68 @@ export interface ReservationListItem {
 export interface ReservationListResponse {
   reservations: ReservationListItem[];
 }
+
+// -------------------- Itinerary --------------------
+
+/** One standalone itinerary event returned by the itinerary endpoint. */
+export interface ItineraryEvent {
+  id: string;
+  createdById: string;
+  title: string;
+  startDateTime: string;
+  endDateTime: string | null;
+  locationName: string | null;
+  activityId: string | null;
+  reservationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One calendar day in the trip itinerary. */
+export interface ItineraryDay {
+  date: string;
+  events: ItineraryEvent[];
+}
+
+/** GET /api/trips/:tripId/itinerary */
+export interface ItineraryResponse {
+  startDate: string;
+  endDate: string;
+  events: ItineraryEvent[];
+}
+
+export interface ItineraryEventDetail {
+  id: string;
+  createdById: string;
+  title: string;
+  description: string | null;
+  startDateTime: string;
+  endDateTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ItineraryEventDetailResponse {
+  itineraryEvent: ItineraryEventDetail;
+}
+
+export interface CreateItineraryEventBody {
+  title: string;
+  description?: string | null;
+  startDateTime: string;
+  endDateTime?: string | null;
+  timeZone: string;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export type UpdateItineraryEventBody =
+  Omit<Partial<CreateItineraryEventBody>, 'timeZone'> & {
+    timeZone: string;
+  };

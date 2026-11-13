@@ -31,6 +31,8 @@ const itineraryEventFields = z.object({
 
   endDateTime: z.iso.datetime().nullable().optional(),
 
+  timeZone: z.string().trim().min(1, 'Time zone is required'),
+
   locationName: z.string().trim().max(200).nullable().optional(),
 
   locationAddress: z.string().trim().max(300).nullable().optional(),
@@ -61,10 +63,17 @@ export type CreateItineraryEventInput = z.infer<
 // -------------------- Update Schema --------------------
 
 export const updateItineraryEventSchema = itineraryEventFields
+  .omit({ timeZone: true })
   .partial()
-  .refine((data) => Object.keys(data).length > 0, {
-    message: 'Provide at least one field to update',
+  .extend({
+    timeZone: z.string().trim().min(1, 'Time zone is required'),
   })
+  .refine(
+    (data) => Object.keys(data).some((key) => key !== 'timeZone'),
+    {
+      message: 'Provide at least one field to update',
+    },
+  )
   .refine(
     (data) =>
       data.startDateTime === undefined ||

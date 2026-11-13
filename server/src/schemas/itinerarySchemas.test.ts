@@ -19,6 +19,7 @@ import {
 const VALID_EVENT = {
   title: 'Visit Magic Kingdom',
   startDateTime: '2026-06-12T14:00:00Z',
+  timeZone: 'America/New_York',
 };
 
 // -------------------- Create Schema --------------------
@@ -189,15 +190,26 @@ describe('createItineraryEventSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects a missing time zone', () => {
+  const { timeZone: _timeZone, ...withoutTimeZone } = VALID_EVENT;
+
+  expect(createItineraryEventSchema.safeParse(withoutTimeZone).success).toBe(false);
+});
 });
 
 // -------------------- Update Schema --------------------
 
+
 describe('updateItineraryEventSchema', () => {
+  const TIME_ZONE = 'America/New_York';
+
   it('accepts a single-field update', () => {
     expect(
-      updateItineraryEventSchema.safeParse({ title: 'Visit Universal Studios' })
-        .success,
+      updateItineraryEventSchema.safeParse({
+        title: 'Visit Universal Studios',
+        timeZone: TIME_ZONE,
+      }).success,
     ).toBe(true);
   });
 
@@ -205,18 +217,40 @@ describe('updateItineraryEventSchema', () => {
     expect(
       updateItineraryEventSchema.safeParse({
         locationName: 'Universal Studios',
+        timeZone: TIME_ZONE,
       }).success,
     ).toBe(true);
   });
 
   it('rejects an empty update body', () => {
-    expect(updateItineraryEventSchema.safeParse({}).success).toBe(false);
+    expect(
+      updateItineraryEventSchema.safeParse({
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a missing time zone', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        title: 'Updated event title',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a time-zone-only update', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(false);
   });
 
   it('rejects an out-of-order pair when both timestamps are supplied', () => {
     const result = updateItineraryEventSchema.safeParse({
       startDateTime: '2026-06-12T20:00:00Z',
       endDateTime: '2026-06-12T14:00:00Z',
+      timeZone: TIME_ZONE,
     });
 
     expect(result.success).toBe(false);
@@ -226,6 +260,7 @@ describe('updateItineraryEventSchema', () => {
     expect(
       updateItineraryEventSchema.safeParse({
         startDateTime: '2026-06-12T15:00:00Z',
+        timeZone: TIME_ZONE,
       }).success,
     ).toBe(true);
   });
@@ -234,13 +269,17 @@ describe('updateItineraryEventSchema', () => {
     expect(
       updateItineraryEventSchema.safeParse({
         endDateTime: '2026-06-12T20:00:00Z',
+        timeZone: TIME_ZONE,
       }).success,
     ).toBe(true);
   });
 
   it('still enforces field-level validation', () => {
     expect(
-      updateItineraryEventSchema.safeParse({ title: '' }).success,
+      updateItineraryEventSchema.safeParse({
+        title: '',
+        timeZone: TIME_ZONE,
+      }).success,
     ).toBe(false);
   });
 
@@ -250,6 +289,7 @@ describe('updateItineraryEventSchema', () => {
       endDateTime: null,
       locationName: null,
       locationAddress: null,
+      timeZone: TIME_ZONE,
     });
 
     expect(result.success).toBe(true);
@@ -259,6 +299,7 @@ describe('updateItineraryEventSchema', () => {
     const result = updateItineraryEventSchema.safeParse({
       latitude: null,
       longitude: null,
+      timeZone: TIME_ZONE,
     });
 
     expect(result.success).toBe(true);
@@ -266,7 +307,10 @@ describe('updateItineraryEventSchema', () => {
 
   it('rejects updating only one coordinate', () => {
     expect(
-      updateItineraryEventSchema.safeParse({ latitude: 28.4177 }).success,
+      updateItineraryEventSchema.safeParse({
+        latitude: 28.4177,
+        timeZone: TIME_ZONE,
+      }).success,
     ).toBe(false);
   });
 
@@ -275,6 +319,7 @@ describe('updateItineraryEventSchema', () => {
       updateItineraryEventSchema.safeParse({
         latitude: 28.4177,
         longitude: -81.5812,
+        timeZone: TIME_ZONE,
       }).success,
     ).toBe(true);
   });
@@ -283,6 +328,7 @@ describe('updateItineraryEventSchema', () => {
     expect(
       updateItineraryEventSchema.safeParse({
         title: 'Updated event title',
+        timeZone: TIME_ZONE,
       }).success,
     ).toBe(true);
   });
