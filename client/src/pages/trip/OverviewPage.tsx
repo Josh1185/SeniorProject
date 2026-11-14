@@ -26,14 +26,14 @@ import { Link, useNavigate, useParams } from 'react-router';
 import { useDeleteTrip } from '../../hooks/trips/useDeleteTrip';
 import { useTrip } from '../../hooks/trips/useTrip';
 import { formatDateRange } from '../../lib/format';
-import { useItinerary } from '../../hooks/itinerary/useItinerary';
+// import { useItinerary } from '../../hooks/itinerary/useItinerary';
 
 // -------------------- Component imports --------------------
 import { Avatar } from '../../components/Avatar';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { TripFormModal } from '../../components/TripFormModal';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
-import { ItineraryList } from '../../components/itinerary/ItineraryList';
+// import { ItineraryList } from '../../components/itinerary/ItineraryList';
 
 // -------------------- Internal Components --------------------
 
@@ -73,7 +73,7 @@ export function OverviewPage() {
 
   // ----- 2. Hook usage -----
   const trip = useTrip(tripId);
-  const itinerary = useItinerary(tripId);
+  // const itinerary = useItinerary(tripId);
   const deleteTrip = useDeleteTrip(tripId ?? '');
 
   // ----- 3. Loading and error states -----
@@ -190,6 +190,11 @@ export function OverviewPage() {
         </Card>
 
         <Card title="Itinerary">
+          <NotBuiltYet feature="Upcoming itinerary" />
+        </Card>
+
+        {/*
+        <Card title="Itinerary">
   {itinerary.isLoading && (
     <p className="text-sm text-ink-700">Loading itinerary…</p>
   )}
@@ -218,7 +223,7 @@ export function OverviewPage() {
     events={itinerary.data.events}
   />
 )}
-</Card>
+</Card> */}
 
         <Card title="Expenses">
           <NotBuiltYet feature="Expense tracking" />
