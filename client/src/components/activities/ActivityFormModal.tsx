@@ -2,16 +2,19 @@
  * FILE: ActivityFormModal.tsx
  * DESCRIPTION: Creates and edits activities using a shared form modal.
  *
- * LAST UPDATED: 2026-11-12 - File Created (Brandon Douglass)
+ * LAST UPDATED: 2026-11-15 - Integrate LocationPicker for activity addresses (Brandon Douglass)
+ *               2026-11-12 - File Created (Brandon Douglass)
  */
 
 // -------------------- Type imports --------------------
 import type { ActivityDetail, CreateActivityBody } from '../../types/api';
 import type { FormState } from '../../lib/formState';
+import type { LocationValue } from '../../lib/location';
 
 // -------------------- Module and lib imports --------------------
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { readFormValues } from '../../lib/formState';
+import { emptyLocation } from '../../lib/location';
 import { toDateTimeInputValue } from '../../lib/format';
 import { centsToDollars, dollarsToCents, MAX_AMOUNT_CENTS } from '../../lib/money';
 
@@ -20,6 +23,7 @@ import { useCreateActivity } from '../../hooks/activities/useCreateActivity';
 import { useUpdateActivity } from '../../hooks/activities/useUpdateActivity';
 
 // -------------------- Component imports --------------------
+import { LocationPicker } from '../LocationPicker';
 import { Modal } from '../Modal';
 import { DateTimeInput } from '../form/DateTimeInput';
 import { TextArea } from '../form/TextArea';
@@ -40,11 +44,22 @@ const FIELD_NAMES = [
   'description',
   'suggestedDateTime',
   'locationName',
-  'locationAddress',
   'estimatedCost',
 ] as const;
 
 type ActivityFormValues = Record<(typeof FIELD_NAMES)[number], string>;
+
+/** Initial location for creating or editing an activity. */
+function initialLocation(activity: ActivityDetail | undefined): LocationValue {
+  if (!activity) return emptyLocation;
+
+  return {
+    label: activity.locationAddress ?? '',
+    fullAddress: activity.locationAddress ?? null,
+    latitude: activity.latitude ?? null,
+    longitude: activity.longitude ?? null,
+  };
+}
 
 /** Initial values for creating or editing an activity. */
 function initialValues(activity: ActivityDetail | undefined): ActivityFormValues {
@@ -53,7 +68,6 @@ function initialValues(activity: ActivityDetail | undefined): ActivityFormValues
     description: activity?.description ?? '',
     suggestedDateTime: toDateTimeInputValue(activity?.suggestedDateTime),
     locationName: activity?.locationName ?? '',
-    locationAddress: activity?.locationAddress ?? '',
     estimatedCost:
       activity?.estimatedCostCents != null ? centsToDollars(activity.estimatedCostCents) : '',
   };
@@ -62,6 +76,8 @@ function initialValues(activity: ActivityDetail | undefined): ActivityFormValues
 // -------------------- Component --------------------
 export function ActivityFormModal({ open, onClose, tripId, activity }: ActivityFormModalProps) {
   const isEdit = Boolean(activity);
+  // Controlled location state for Mapbox autocomplete.
+  const [place, setPlace] = useState<LocationValue>(() => initialLocation(activity));
 
   // ----- 1. Hooks -----
   const createActivity = useCreateActivity(tripId ?? '');
@@ -101,7 +117,9 @@ export function ActivityFormModal({ open, onClose, tripId, activity }: ActivityF
         description: values.description,
         suggestedDateTime: values.suggestedDateTime || null,
         locationName: values.locationName,
-        locationAddress: values.locationAddress,
+        locationAddress: place.label || null,
+        latitude: place.latitude,
+        longitude: place.longitude,
         estimatedCostCents,
       };
 
@@ -166,13 +184,13 @@ export function ActivityFormModal({ open, onClose, tripId, activity }: ActivityF
           placeholder="Museum of Natural History"
         />
 
-        <TextField
+        <LocationPicker
           label="Location Address"
-          name="locationAddress"
-          maxLength={300}
-          defaultValue={state.values.locationAddress}
-          error={state.fieldErrors?.locationAddress}
-          placeholder="200 Central Park West, New York, NY"
+          searchFor="address"
+          value={place}
+          onChange={setPlace}
+          placeholder="Search for an address"
+          hint="Optional. Select a result to save its coordinates."
         />
 
         <TextField
