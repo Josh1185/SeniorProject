@@ -3,13 +3,14 @@
  * DESCRIPTION: Displays a trip's activities with search, sorting,
  *              loading/error handling, and empty states.
  *
- * LAST UPDATED: 2026-11-06 - Connect Activities detail modal (Brandon Douglass)
+ * LAST UPDATED: 2026-11-12 - Connect activity creation modal (Brandon Douglass)
+ *               2026-11-06 - Connect Activities detail modal (Brandon Douglass)
  *               2026-11-03 - Build Activities list page (Brandon Douglass)
  *               2026-10-11 - File Created (Josh Iehle)
  */
 
 // -------------------- Type imports --------------------
-import type { ActivityListItem } from '../../types/api';
+import type { ActivityDetail, ActivityListItem } from '../../types/api';
 import type { ActivityFilters } from '../../services/activityService';
 
 // -------------------- Module and lib imports --------------------
@@ -20,12 +21,15 @@ import { unpackSort } from '../../lib/listParams';
 // -------------------- Hook imports --------------------
 import { useActivities } from '../../hooks/activities/useActivities';
 import { useListQueryState } from '../../hooks/useListQueryState';
+import { useDeleteActivity } from '../../hooks/activities/useDeleteActivity';
 
 // -------------------- Component imports --------------------
 import { ActivityDetailModal } from '../../components/activities/ActivityDetailModal';
 import { ActivityList } from '../../components/activities/ActivityList';
 import { EmptyState } from '../../components/list/EmptyState';
 import { ListToolbar } from '../../components/list/ListToolbar';
+import { ActivityFormModal } from '../../components/activities/ActivityFormModal';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 
 // -------------------- List Defaults --------------------
 
@@ -60,6 +64,18 @@ export function ActivitiesPage() {
   // null means no detail modal is open.
   const [selectedActivity, setSelectedActivity] = useState<ActivityListItem | null>(null);
 
+  // Tracks whether the create activity form is open.
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  // Stores the full activity details while the edit form is open.
+  const [editingActivity, setEditingActivity] = useState<ActivityDetail | null>(null);
+
+  // Stores the activity awaiting delete confirmation.
+  const [deletingActivity, setDeletingActivity] = useState<ActivityDetail | null>(null);
+
+  // Stores an error message if deleting an activity fails.
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // ----- 2. Read search and sort values from the URL -----
   const list = useListQueryState({
     defaults: ACTIVITY_LIST_DEFAULTS,
@@ -77,14 +93,26 @@ export function ActivitiesPage() {
   // ----- 4. Fetch activities -----
   const activities = useActivities(tripId, filters);
 
+  // Handles deleting an activity and refreshing the activity list.
+  const deleteActivity = useDeleteActivity(tripId ?? '');
   const results = activities.data?.activities ?? [];
 
   // ----- 5. Render the page -----
   return (
     <div>
-      <div>
-        <h1 className="text-2xl font-semibold text-ink-900">Trip Activities</h1>
-        <p className="mt-1 text-sm text-ink-700">Explore activities suggested for this trip.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink-900">Trip Activities</h1>
+          <p className="mt-1 text-sm text-ink-700">Explore activities suggested for this trip.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="cursor-pointer rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white duration-150 hover:bg-brand-700"
+        >
+          Add Activity
+        </button>
       </div>
 
       {/* Search and sorting controls */}
@@ -163,6 +191,72 @@ export function ActivitiesPage() {
         tripId={tripId}
         activity={selectedActivity}
         onClose={() => setSelectedActivity(null)}
+        onEdit={(activity) => {
+          setSelectedActivity(null);
+          setEditingActivity(activity);
+        }}
+        onDelete={(activity) => {
+          setSelectedActivity(null);
+          setDeleteError(null);
+          setDeletingActivity(activity);
+        }}
+      />
+
+      {/* Create a new activity. */}
+      {showCreateModal && (
+        <ActivityFormModal
+          key="create-activity"
+          open={showCreateModal}
+          tripId={tripId}
+          onClose={() => setShowCreateModal(false)}
+        />
+      )}
+      {/* Edit an existing activity. */}
+      {editingActivity && (
+        <ActivityFormModal
+          key={editingActivity.id}
+          open={true}
+          tripId={tripId}
+          activity={editingActivity}
+          onClose={() => setEditingActivity(null)}
+        />
+      )}
+
+      {/* Display delete errors without modifying the shared dialog. */}
+      {deleteError && deletingActivity && (
+        <div
+          role="alert"
+          className="fixed bottom-6 right-6 z-[100] max-w-sm rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700 shadow-lg"
+        >
+          <p className="font-medium">Unable to delete activity</p>
+          <p className="mt-1">{deleteError}</p>
+        </div>
+      )}
+
+      {/* Confirm before permanently deleting an activity. */}
+      <ConfirmDialog
+        open={Boolean(deletingActivity)}
+        onClose={() => {
+          setDeletingActivity(null);
+          setDeleteError(null);
+        }}
+        title="Delete Activity"
+        description={`Are you sure you want to delete "${deletingActivity?.name ?? ''}"? This action cannot be undone.`}
+        confirmLabel="Delete Activity"
+        destructive
+        pending={deleteActivity.isPending}
+        onConfirm={async () => {
+          if (!deletingActivity) return;
+
+          setDeleteError(null);
+
+          try {
+            await deleteActivity.mutateAsync(deletingActivity.id);
+            setDeletingActivity(null);
+          } catch (error) {
+            setDeleteError(error instanceof Error ? error.message : 'Unable to delete activity.');
+          }
+        }}
       />
     </div>
   );

@@ -6,7 +6,8 @@
  *              If you change a controller's select or response envelope,
  *              update the matching type here.
 
- * LAST UPDATED: 2026-11-06 - Add Activities detail response types (Brandon Douglass)
+ * LAST UPDATED: 2026-11-12 - Add activity create/update request types (Brandon Douglass)
+ *               2026-11-06 - Add Activities detail response types (Brandon Douglass)
  *               2026-11-04 - Add Reservations response types (Antony Benitez)
  *               2026-11-03 - Add Activities list response types (Brandon Douglass)
  *               2026-10-16 - Add destination address and coordinates (Josh Iehle)
@@ -188,6 +189,21 @@ export interface ActivityDetail {
 export interface ActivityDetailResponse {
   activity: ActivityDetail;
 }
+
+/** POST /api/trips/:tripId/activities */
+export interface CreateActivityBody {
+  name: string;
+  description?: string;
+  suggestedDateTime?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  estimatedCostCents?: number | null;
+}
+
+/** PATCH /api/trips/:tripId/activities/:activityId */
+export type UpdateActivityBody = Partial<CreateActivityBody>;
 
 // -------------------- Reservations --------------------
 
