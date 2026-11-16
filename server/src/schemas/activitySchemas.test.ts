@@ -1,10 +1,12 @@
+
 /**
  * FILE: activitySchemas.test.ts
  * DESCRIPTION: Unit tests for activity validation schemas.
  *
  * RUNS WITH: npm test --workspace=server (FROM ROOT DIR OF PROJECT)
  *
- * LAST UPDATED: 2026-10-30 - Add activity validation tests (Brandon Douglass)
+ * LAST UPDATED: 2026-11-12 - Test suggested date/time validation (Brandon Douglass)
+ *               2026-10-30 - Add activity validation tests (Brandon Douglass)
  */
 
 // -------------------- Module imports --------------------
@@ -30,6 +32,30 @@ describe('createActivitySchema', () => {
   it('accepts an activity with only a name', () => {
     const result = createActivitySchema.safeParse({ name: 'Go Hiking' });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts a valid suggested date/time', () => {
+    const result = createActivitySchema.safeParse({
+      ...VALID_ACTIVITY,
+      suggestedDateTime: '2027-04-10T14:30:00Z',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a null suggested date/time', () => {
+    const result = createActivitySchema.safeParse({
+      ...VALID_ACTIVITY,
+      suggestedDateTime: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid suggested date/time', () => {
+    const result = createActivitySchema.safeParse({
+      ...VALID_ACTIVITY,
+      suggestedDateTime: 'tomorrow afternoon',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects a missing name', () => {
@@ -76,6 +102,27 @@ describe('updateActivitySchema', () => {
       estimatedCostCents: 3000,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts updating only the suggested date/time', () => {
+    const result = updateActivitySchema.safeParse({
+      suggestedDateTime: '2027-04-10T14:30:00Z',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts clearing the suggested date/time', () => {
+    const result = updateActivitySchema.safeParse({
+      suggestedDateTime: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an invalid suggested date/time update', () => {
+    const result = updateActivitySchema.safeParse({
+      suggestedDateTime: 'invalid-date',
+    });
+    expect(result.success).toBe(false);
   });
 
   it('rejects an empty update request', () => {

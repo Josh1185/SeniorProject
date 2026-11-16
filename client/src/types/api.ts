@@ -6,7 +6,8 @@
  *              If you change a controller's select or response envelope,
  *              update the matching type here.
 
- * LAST UPDATED: 2026-11-06 - Add Activities detail response types (Brandon Douglass)
+ * LAST UPDATED: 2026-11-12 - Add activity create/update request types (Brandon Douglass)
+ *               2026-11-06 - Add Activities detail response types (Brandon Douglass)
  *               2026-11-04 - Add Reservations response types (Antony Benitez)
  *               2026-11-03 - Add Activities list response types (Brandon Douglass)
  *               2026-10-16 - Add destination address and coordinates (Josh Iehle)
@@ -189,6 +190,21 @@ export interface ActivityDetailResponse {
   activity: ActivityDetail;
 }
 
+/** POST /api/trips/:tripId/activities */
+export interface CreateActivityBody {
+  name: string;
+  description?: string;
+  suggestedDateTime?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  estimatedCostCents?: number | null;
+}
+
+/** PATCH /api/trips/:tripId/activities/:activityId */
+export type UpdateActivityBody = Partial<CreateActivityBody>;
+
 // -------------------- Reservations --------------------
 
 /** Reservation categories supported by the backend. */
@@ -231,7 +247,7 @@ export interface ReservationDetail {
   createdAt: string;
   updatedAt: string;
 }
-
+ 
 /** GET /api/trips/:tripId/reservations/:reservationId */
 export interface ReservationDetailResponse {
   reservation: ReservationDetail;
@@ -260,3 +276,68 @@ export interface CreateReservationBody {
  * Sending null clears a nullable field.
  */
 export type UpdateReservationBody = Partial<CreateReservationBody>;
+  
+// -------------------- Itinerary --------------------
+
+/** One standalone itinerary event returned by the itinerary endpoint. */
+export interface ItineraryEvent {
+  id: string;
+  createdById: string;
+  title: string;
+  startDateTime: string;
+  endDateTime: string | null;
+  locationName: string | null;
+  activityId: string | null;
+  reservationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One calendar day in the trip itinerary. */
+export interface ItineraryDay {
+  date: string;
+  events: ItineraryEvent[];
+}
+
+/** GET /api/trips/:tripId/itinerary */
+export interface ItineraryResponse {
+  startDate: string;
+  endDate: string;
+  events: ItineraryEvent[];
+}
+
+export interface ItineraryEventDetail {
+  id: string;
+  createdById: string;
+  title: string;
+  description: string | null;
+  startDateTime: string;
+  endDateTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ItineraryEventDetailResponse {
+  itineraryEvent: ItineraryEventDetail;
+}
+
+export interface CreateItineraryEventBody {
+  title: string;
+  description?: string | null;
+  startDateTime: string;
+  endDateTime?: string | null;
+  timeZone: string;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export type UpdateItineraryEventBody =
+  Omit<Partial<CreateItineraryEventBody>, 'timeZone'> & {
+    timeZone: string;
+  };
