@@ -228,6 +228,55 @@ export interface ReservationListResponse {
   reservations: ReservationListItem[];
 }
 
+// -------------------- Reservation Detail (R4) --------------------
+
+/** Full reservation information returned by the detail endpoint. */
+export interface ReservationDetail {
+  id: string;
+  type: ReservationType;
+  name: string;
+  confirmationNumber: string | null;
+  startDateTime: string | null;
+  endDateTime: string | null;
+  locationName: string | null;
+  locationAddress: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  costCents: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+ 
+/** GET /api/trips/:tripId/reservations/:reservationId */
+export interface ReservationDetailResponse {
+  reservation: ReservationDetail;
+}
+
+// -------------------- Reservation Writes (R5) --------------------
+
+/** POST /api/trips/:tripId/reservations */
+export interface CreateReservationBody {
+  type: ReservationType;
+  name: string;
+  confirmationNumber?: string | null;
+  startDateTime?: string | null;
+  endDateTime?: string | null;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  costCents?: number | null;
+  notes?: string | null;
+}
+
+/**
+ * PATCH /api/trips/:tripId/reservations/:reservationId
+ * Omitted fields remain unchanged.
+ * Sending null clears a nullable field.
+ */
+export type UpdateReservationBody = Partial<CreateReservationBody>;
+  
 // -------------------- Itinerary --------------------
 
 /** One standalone itinerary event returned by the itinerary endpoint. */
