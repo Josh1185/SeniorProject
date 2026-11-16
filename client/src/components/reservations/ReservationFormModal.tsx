@@ -1,13 +1,15 @@
+
 /**
  * FILE: ReservationFormModal.tsx
  * DESCRIPTION: One form for creating and editing all reservation types.
  *
- * LAST UPDATED: 2026-11-12 - File Created (Antony Benitez)
+ * LAST UPDATED: 2026-11-15 - Use shared LocationPicker (Antony Benitez)
  */
 
 // -------------------- Type imports --------------------
 
 import type { FormEvent } from 'react';
+import type { LocationValue } from '../../lib/location';
 
 import type {
   CreateReservationBody,
@@ -18,6 +20,7 @@ import type {
 // -------------------- Module and lib imports --------------------
 
 import { useState } from 'react';
+import { emptyLocation } from '../../lib/location';
 
 import {
   centsToDollars,
@@ -33,6 +36,7 @@ import { useUpdateReservation } from '../../hooks/reservations/useUpdateReservat
 // -------------------- Component imports --------------------
 
 import { Modal } from '../Modal';
+import { LocationPicker } from '../LocationPicker';
 import { FormField } from '../form/FormField';
 import { TextField } from '../form/TextField';
 import { TextArea } from '../form/TextArea';
@@ -56,7 +60,6 @@ interface ReservationFormValues {
   startDateTime: string;
   endDateTime: string;
   locationName: string;
-  locationAddress: string;
   cost: string;
   notes: string;
 }
@@ -81,10 +84,7 @@ const RESERVATION_TYPES: {
 
 // -------------------- Form Helpers --------------------
 
-/**
- * Converts an API timestamp into local date/time input format.
- * HTML datetime-local inputs expect YYYY-MM-DDTHH:mm.
- */
+/** Converts an API timestamp to a local datetime input value. */
 function toLocalDateTime(value: string | null): string {
   if (!value) {
     return '';
@@ -103,7 +103,7 @@ function toLocalDateTime(value: string | null): string {
   return localDate.toISOString().slice(0, 16);
 }
 
-/** Converts the user's local date/time into an ISO timestamp. */
+/** Converts local date/time to an API-compatible ISO timestamp. */
 function toApiDateTime(value: string): string | null {
   if (!value) {
     return null;
@@ -125,6 +125,25 @@ function optionalText(value: string): string | null {
   return trimmed || null;
 }
 
+/**
+ * Reconstructs LocationPicker's controlled value when editing.
+ * Preserves coordinates from the existing reservation.
+ */
+function initialLocation(
+  reservation: ReservationDetail | undefined,
+): LocationValue {
+  if (!reservation) {
+    return emptyLocation;
+  }
+
+  return {
+    label: reservation.locationAddress ?? '',
+    fullAddress: reservation.locationAddress,
+    latitude: reservation.latitude,
+    longitude: reservation.longitude,
+  };
+}
+
 /** Starting form values for create or edit mode. */
 function initialValues(
   reservation: ReservationDetail | undefined,
@@ -140,7 +159,6 @@ function initialValues(
       reservation?.endDateTime ?? null,
     ),
     locationName: reservation?.locationName ?? '',
-    locationAddress: reservation?.locationAddress ?? '',
     cost:
       reservation?.costCents === null ||
       reservation?.costCents === undefined
@@ -164,6 +182,14 @@ export function ReservationFormModal({
 
   const [values, setValues] = useState<ReservationFormValues>(
     () => initialValues(reservation),
+  );
+
+  /**
+   * LocationPicker is controlled separately because it updates
+   * the address and coordinates together.
+   */
+  const [location, setLocation] = useState<LocationValue>(
+    () => initialLocation(reservation),
   );
 
   const [fieldErrors, setFieldErrors] =
@@ -214,7 +240,6 @@ export function ReservationFormModal({
     }
 
     const errors: FormErrors = {};
-
     const name = values.name.trim();
 
     // Required fields
@@ -244,16 +269,18 @@ export function ReservationFormModal({
       }
     }
 
-    // Convert local dates to ISO timestamps with timezone.
+    // Convert local dates to ISO timestamps.
     const startDateTime = toApiDateTime(values.startDateTime);
     const endDateTime = toApiDateTime(values.endDateTime);
 
     if (values.startDateTime && !startDateTime) {
-      errors.startDateTime = 'Enter a valid start date and time.';
+      errors.startDateTime =
+        'Enter a valid start date and time.';
     }
 
     if (values.endDateTime && !endDateTime) {
-      errors.endDateTime = 'Enter a valid end date and time.';
+      errors.endDateTime =
+        'Enter a valid end date and time.';
     }
 
     if (
@@ -265,7 +292,6 @@ export function ReservationFormModal({
         'End date must be after the start date.';
     }
 
-    // Stop if any validation errors exist.
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -277,6 +303,16 @@ export function ReservationFormModal({
 
     // ----- 5. Build the API request -----
 
+    /**
+     * Location Name is an optional custom business name.
+     *
+     * LocationPicker supplies:
+     * - locationAddress
+     * - latitude
+     * - longitude
+     *
+     * Free-text addresses remain valid, without coordinates.
+     */
     const body: CreateReservationBody = {
       type: values.type,
       name,
@@ -286,7 +322,11 @@ export function ReservationFormModal({
       startDateTime,
       endDateTime,
       locationName: optionalText(values.locationName),
-      locationAddress: optionalText(values.locationAddress),
+      locationAddress: optionalText(
+        location.fullAddress ?? location.label,
+      ),
+      latitude: location.latitude,
+      longitude: location.longitude,
       costCents,
       notes: optionalText(values.notes),
     };
@@ -376,7 +416,10 @@ export function ReservationFormModal({
           maxLength={200}
           value={values.confirmationNumber}
           onChange={(event) =>
-            updateField('confirmationNumber', event.target.value)
+            updateField(
+              'confirmationNumber',
+              event.target.value,
+            )
           }
           placeholder="ABC123"
         />
@@ -394,7 +437,10 @@ export function ReservationFormModal({
                 type="datetime-local"
                 value={values.startDateTime}
                 onChange={(event) =>
-                  updateField('startDateTime', event.target.value)
+                  updateField(
+                    'startDateTime',
+                    event.target.value,
+                  )
                 }
                 aria-describedby={describedBy}
                 aria-invalid={invalid}
@@ -414,7 +460,10 @@ export function ReservationFormModal({
                 type="datetime-local"
                 value={values.endDateTime}
                 onChange={(event) =>
-                  updateField('endDateTime', event.target.value)
+                  updateField(
+                    'endDateTime',
+                    event.target.value,
+                  )
                 }
                 aria-describedby={describedBy}
                 aria-invalid={invalid}
@@ -424,28 +473,40 @@ export function ReservationFormModal({
           </FormField>
         </div>
 
-        {/* Location Name */}
+        {/* Optional name for the hotel, restaurant, etc. */}
         <TextField
           label="Location Name"
           name="locationName"
           maxLength={200}
           value={values.locationName}
           onChange={(event) =>
-            updateField('locationName', event.target.value)
+            updateField(
+              'locationName',
+              event.target.value,
+            )
           }
           placeholder="Hilton New York"
+          hint="Optional name for the hotel, restaurant, or venue."
         />
 
-        {/* Address */}
-        <TextField
-          label="Address"
+        {/*
+          Shared LocationPicker replaces the plain address input.
+
+          searchFor="address" uses Mapbox address geocoding.
+          Choosing a result captures the address and coordinates.
+          Typing a custom address is also allowed.
+        */}
+        <LocationPicker
+          label="Location Address"
           name="locationAddress"
-          maxLength={500}
-          value={values.locationAddress}
-          onChange={(event) =>
-            updateField('locationAddress', event.target.value)
-          }
-          placeholder="Enter an address"
+          searchFor="address"
+          value={location}
+          onChange={(nextLocation) => {
+            setLocation(nextLocation);
+            setFormError(null);
+          }}
+          placeholder="Start typing an address"
+          hint="Optional. Select a suggested address to save its map coordinates."
         />
 
         {/* Cost */}
