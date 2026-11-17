@@ -25,6 +25,11 @@ import { useChangeTripMemberRole } from '../../hooks/trips/useChangeTripMemberRo
 import { useRemoveTripMember } from '../../hooks/trips/useRemoveTripMember';
 import { useLeaveTrip } from '../../hooks/trips/useLeaveTrip';
 import { formatDate } from '../../lib/format';
+import { useTripInvitations } from '../../hooks/invitations/useTripInvitations';
+import { useRevokeInvitation } from '../../hooks/invitations/useRevokeInvitation';
+import { InviteFormModal } from '../../components/invitations/InviteFormModal';
+import { TripInvitationList } from '../../components/invitations/TripInvitationList';
+import type { TripInvitation } from '../../types/api';
 
 // -------------------- Component Imports --------------------
 
@@ -148,6 +153,13 @@ export function MembersPage() {
 
   // Track action errors.
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  // Owner-only endpoint: a member gets a 404, so the query is not run for one.
+  const invitations = useTripInvitations(tripId, trip.data?.yourRole === 'OWNER');
+  const revokeInvitation = useRevokeInvitation(tripId ?? '');
 
   // Loading state.
   if (trip.isLoading) {
@@ -307,15 +319,28 @@ export function MembersPage() {
           </p>
         </div>
 
-        {/* Leave Trip Button */}
-        <button
-          type="button"
-          onClick={handleLeaveTrip}
-          disabled={leaveTrip.isPending}
-          className="cursor-pointer rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {leaveTrip.isPending ? 'Leaving...' : 'Leave Trip'}
-        </button>
+        <div className='flex gap-2'>
+          {isCurrentUserOwner && (
+            <button
+              type="button"
+              onClick={() => setInviteOpen(true)}
+              className="cursor-pointer rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white duration-150 hover:bg-brand-700"
+            >
+              Invite People
+            </button>
+          )}
+
+          {/* Leave Trip Button */}
+          <button
+            type="button"
+            onClick={handleLeaveTrip}
+            disabled={leaveTrip.isPending}
+            className="cursor-pointer rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {leaveTrip.isPending ? 'Leaving...' : 'Leave Trip'}
+          </button>
+        </div>
+
       </div>
 
       {/* Action Error Message */}
@@ -374,6 +399,50 @@ export function MembersPage() {
           />
         </section>
       )}
+
+      {isCurrentUserOwner && (
+        <section className="rounded-lg border border-ink-300 bg-ink-50 p-4 sm:p-5">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-ink-900">Invitations</h2>
+            <p className="mt-1 text-sm text-ink-700">
+              Invitations you have sent for this trip.
+            </p>
+          </div>
+
+          {invitations.isLoading && <p className="text-sm text-ink-700">Loading invitations…</p>}
+
+          {invitations.data?.invitations.length === 0 && (
+            <p className="text-sm text-ink-700">
+              No invitations sent yet. Use Invite People to create a link.
+            </p>
+          )}
+
+          {invitations.data && invitations.data.invitations.length > 0 && (
+            <TripInvitationList
+              invitations={invitations.data.invitations}
+              revokingId={revokingId ?? undefined}
+              onRevoke={(invitation: TripInvitation) => {
+                setRevokingId(invitation.id);
+                setActionError(null);
+                revokeInvitation.mutate(invitation.id, {
+                  onSettled: () => setRevokingId(null),
+                  onError: (error) =>
+                    setActionError(
+                      error instanceof Error ? error.message : 'Unable to revoke this invitation.',
+                    ),
+                });
+              }}
+            />
+          )}
+        </section>
+      )}
+
+      <InviteFormModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        tripId={tripId}
+        tripName={tripData.name}
+      />
 
       {/* Member Detail Modal */}
       <DetailModal
