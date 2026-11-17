@@ -41,6 +41,9 @@ import { RegisterPage } from './pages/RegisterPage';
 import { InvitationsPage } from './pages/dashboard/InvitationsPage';
 import { MyTripsPage } from './pages/dashboard/MyTripsPage';
 
+// -------------------- Invitation link page --------------------
+import { InvitePage } from './pages/InvitePage';
+
 // -------------------- Trip Workspace page imports --------------------
 import { ActivitiesPage } from './pages/trip/ActivitiesPage';
 import { ExpensesPage } from './pages/trip/ExpensesPage';
@@ -67,6 +70,8 @@ export function App() {
           </ProtectedRoute>
         }
       >
+        <Route path="/invite/:token" element={<InvitePage />} />
+
         {/* Dashboard, with My Trips / Invitations as real routes rather than
             local tab state. That way the back button works and a teammate can
             paste a link straight to the invitations tab. */}

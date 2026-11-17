@@ -247,7 +247,7 @@ export interface ReservationDetail {
   createdAt: string;
   updatedAt: string;
 }
- 
+
 /** GET /api/trips/:tripId/reservations/:reservationId */
 export interface ReservationDetailResponse {
   reservation: ReservationDetail;
@@ -276,7 +276,7 @@ export interface CreateReservationBody {
  * Sending null clears a nullable field.
  */
 export type UpdateReservationBody = Partial<CreateReservationBody>;
-  
+
 // -------------------- Itinerary --------------------
 
 /** One standalone itinerary event returned by the itinerary endpoint. */
@@ -341,3 +341,84 @@ export type UpdateItineraryEventBody =
   Omit<Partial<CreateItineraryEventBody>, 'timeZone'> & {
     timeZone: string;
   };
+
+// -------------------- Invitations --------------------
+
+/**
+ * Mirrors the InvitationStatus enum on the server.
+ *
+ * EXPIRED is computed, not stored - the server reconciles a stored PENDING
+ * against the clock before it answers. Never recompute it on the client;
+ * two places doing that arithmetic is how a list starts disagreeing with the
+ * buttons on it.
+ */
+export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+
+/**
+ * What a trip OWNER sees. Carries the token, because the owner is the person
+ * who copies the link - which is also why this only ever comes back from an
+ * owner-gated route.
+ */
+export interface TripInvitation {
+  id: string;
+  email: string;
+  token: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  invitedBy: UserSummary;
+}
+
+/** The trip summary an invitee can see before they have joined anything. */
+export interface InvitedTripSummary {
+  id: string;
+  name: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+}
+
+/**
+ * What an INVITEE sees. No `email` - they know their own - but it carries the
+ * trip, since the invitee has no other way to find out what they are being
+ * invited to.
+ */
+export interface MyInvitation {
+  id: string;
+  token: string;
+  status: InvitationStatus;
+  expiresAt: string;
+  createdAt: string;
+  invitedBy: UserSummary;
+  trip: InvitedTripSummary;
+}
+
+/** GET /api/trips/:tripId/invitations */
+export interface TripInvitationListResponse {
+  invitations: TripInvitation[];
+}
+
+/** POST /api/trips/:tripId/invitations */
+export interface TripInvitationResponse {
+  invitation: TripInvitation;
+}
+
+/** POST /api/trips/:tripId/invitations */
+export interface CreateInvitationBody {
+  email: string;
+}
+
+/** GET /api/invitations */
+export interface MyInvitationListResponse {
+  invitations: MyInvitation[];
+}
+
+/** GET /api/invitations/:token */
+export interface InvitationPreviewResponse {
+  invitation: MyInvitation;
+}
+
+/** POST /api/invitations/:token/accept - the id is where to navigate next. */
+export interface AcceptInvitationResponse {
+  tripId: string;
+}

@@ -98,3 +98,21 @@ export const itineraryKeys = {
   detail: (tripId: string, itineraryEventId: string) =>
     [...itineraryKeys.details(tripId), itineraryEventId] as const,
 };
+
+// -------------------- Invitation Module --------------------
+
+/**
+ * Two scopes, deliberately, matching the two halves of the API.
+ *
+ * `trip()` lives under the trip, like every other feature, so deleting a trip
+ * from the cache takes its invitations with it.
+ *
+ * `mine()` and `byToken()` cannot - they are about invitations to trips the
+ * caller may have no access to, which is the whole point of an invitation.
+ */
+export const invitationKeys = {
+  all: ['invitations'] as const,
+  mine: () => [...invitationKeys.all, 'mine'] as const,
+  byToken: (token: string) => [...invitationKeys.all, 'token', token] as const,
+  trip: (tripId: string) => ['trips', tripId, 'invitations'] as const,
+};

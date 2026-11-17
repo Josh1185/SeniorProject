@@ -309,6 +309,57 @@ export async function revokeInvitation(req: Request, res: Response) {
 // responsible for its own authorization, and each one says what that is.
 // =============================================================================
 
+// -------------------- GET /api/invitations/:token --------------------
+
+/**
+ * What a given invite link is an invitation to.
+ *
+ * AUTHORIZATION: holding the token, same as accept and decline. Read-only, and
+ * the only handler in this group that changes nothing.
+ *
+ * It exists so the landing page can name the trip before asking someone to
+ * join it. Deliberately narrow: the trip's name, destination and dates, and
+ * who sent it. No member list, no itinerary, no expenses - whoever holds this
+ * link is not a member yet, and may never be.
+ *
+ * A dead invitation is a 404 rather than a body with a status in it. The page
+ * has nothing useful to do with "this was declined three weeks ago" except
+ * say it is not available, and a 404 says that already.
+ */
+export async function getInvitationByToken(req: Request, res: Response) {
+  // ----- 1. Check that the user is mounted to the request -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve and sanity-check the token -----
+  const token = req.params.token;
+
+  if (!isPlausibleToken(token)) {
+    return notFound(res, 'Invitation not found');
+  }
+
+  // ----- 3. Look it up -----
+  const invitation = await prisma.tripInvitation.findUnique({
+    where: { token },
+    select: invitationMineSelect,
+  });
+
+  if (!invitation) {
+    return notFound(res, 'Invitation not found');
+  }
+
+  // ----- 4. A resolved or lapsed invitation is not available -----
+  // Same reconciliation as everywhere else: a stored PENDING past its expiry
+  // is expired, and nothing sweeps the table.
+  if (!isActionable(invitation.status, invitation.expiresAt)) {
+    return notFound(res, 'This invitation is no longer available');
+  }
+
+  // ----- 5. Respond -----
+  res.json({ invitation });
+}
+
 // -------------------- GET /api/invitations --------------------
 
 /**
