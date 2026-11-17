@@ -35,6 +35,7 @@ import {
   acceptInvitation,
   declineInvitation,
   listMyInvitations,
+  getInvitationByToken,
 } from '../controllers/invitationController';
 
 // -------------------- Router Instance --------------------
@@ -42,6 +43,10 @@ export const invitationRouter = Router();
 
 // -------------------- Collection Routes --------------------
 invitationRouter.get('/', listMyInvitations);
+
+// GET before the POSTs is not required - different methods never collide -
+// but it keeps the read above the writes, as everywhere else.
+invitationRouter.get('/:token', getInvitationByToken);
 
 // -------------------- Token Routes --------------------
 // POST rather than GET: both change state, and a GET that joins a trip would
