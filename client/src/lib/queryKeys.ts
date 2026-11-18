@@ -44,6 +44,8 @@ export const expenseKeys = {
 
   detail: (tripId: string, expenseId: string) =>
     [...expenseKeys.details(tripId), expenseId] as const,
+
+  balances: (tripId: string) => [...expenseKeys.all(tripId), 'balances'] as const,
 };
 
 // -------------------- Activity Module --------------------

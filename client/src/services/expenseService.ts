@@ -6,7 +6,13 @@
  */
 
 // -------------------- Type imports --------------------
-import type { ExpenseListResponse, ExpenseDetailResponse, UpdateExpenseBody, CreateExpenseBody } from '../types/api';
+import type {
+  ExpenseListResponse,
+  ExpenseDetailResponse,
+  UpdateExpenseBody,
+  CreateExpenseBody,
+  BalancesResponse,
+} from '../types/api';
 
 // -------------------- Module and lib imports --------------------
 import { get, post, del, patch } from '../lib/api';
@@ -61,6 +67,11 @@ export function fetchExpense(
   expenseId: string,
 ): Promise<ExpenseDetailResponse> {
   return get<ExpenseDetailResponse>(`/trips/${tripId}/expenses/${expenseId}`);
+}
+
+/** GET /api/trips/:tripId/expenses/balances */
+export function fetchBalances(tripId: string): Promise<BalancesResponse> {
+  return get<BalancesResponse>(`/trips/${tripId}/expenses/balances`);
 }
 
 /** POST /api/trips/:tripId/expenses */

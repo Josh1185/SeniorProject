@@ -145,6 +145,40 @@ export interface CreateExpenseBody {
 
 export type UpdateExpenseBody = Partial<CreateExpenseBody>;
 
+// -------------------- Balances --------------------
+
+/** One person's position on a trip. All figures are integer cents. */
+export interface MemberBalance {
+  user: UserSummary;
+  /** Total this person paid out for the group. */
+  paidCents: number;
+  /** Total of this person's shares across every expense. */
+  owedCents: number;
+  /** paidCents - owedCents. Positive = owed money. Negative = owes money. */
+  balanceCents: number;
+  /**
+   * False for someone removed from the trip who still has money in it.
+   * Their expenses did not leave with them, so they stay in the balances.
+   */
+  isMember: boolean;
+}
+
+/** One payment in the settlement plan. Always positive, never self-to-self. */
+export interface Settlement {
+  from: UserSummary;
+  to: UserSummary;
+  amountCents: number;
+}
+
+/** GET /api/trips/:tripId/expenses/balances */
+export interface BalancesResponse {
+  /** Sorted by balance descending - whoever is owed most first. */
+  balances: MemberBalance[];
+  settlements: Settlement[];
+  /** The caller's own balance, so the page does not have to find it. */
+  yourBalanceCents: number;
+}
+
 // -------------------- Activities --------------------
 
 export interface ActivityListItem {

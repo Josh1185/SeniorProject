@@ -27,11 +27,9 @@ export function useCreateExpense(tripId: string) {
     // Invalidating lists(tripId) rather than one specific list refreshes EVERY
     // cached filter combination, because lists() is a prefix of all of them.
     // It also refreshes totalCents, which rides along in the list response.
-    //
-    // WHEN E-6 LANDS: the balances query belongs here too. Creating an expense
-    // changes who owes what, and a stale balance is worse than a stale list.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: expenseKeys.lists(tripId) });
+      void queryClient.invalidateQueries({ queryKey: expenseKeys.balances(tripId) });
     },
   });
 }
