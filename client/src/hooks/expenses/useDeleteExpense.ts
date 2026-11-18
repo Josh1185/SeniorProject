@@ -26,6 +26,7 @@ export function useDeleteExpense(tripId: string, expenseId: string) {
       // expense that no longer exists and hand you a 404 on the way out.
       queryClient.removeQueries({ queryKey: expenseKeys.detail(tripId, expenseId) });
       void queryClient.invalidateQueries({ queryKey: expenseKeys.lists(tripId) });
+      void queryClient.invalidateQueries({ queryKey: expenseKeys.balances(tripId) })
     },
   });
 }

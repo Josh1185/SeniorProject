@@ -7,24 +7,20 @@
  *              `?search=gas` survives a refresh, works with the back button,
  *              and can be pasted to a teammate.
  *
- *              DIALOG STATE IS ONE TAGGED UNION, not four booleans. Only one
+ *              DIALOG STATE IS ONE TAGGED UNION, not five booleans. Only one
  *              dialog may be open at a time - two native <dialog> elements
  *              open together is legal HTML and looks broken - and a union
  *              makes that structurally impossible rather than a rule someone
  *              has to remember. Opening one closes whatever was open, because
  *              there is only one variable to assign.
  *
- *              WHAT IS STILL NOT HERE:
- *                - "Your Balance" in the summary -> E-6
- *                - A "Paid by" filter -> needs a server query param; one entry
- *                  in `selects` once it exists
- *
  *              The lofi also shows Prev / Next pagination. The endpoint
  *              returns every expense on the trip, so there is nothing to page
  *              through - "Showing N of N" is honest, and dead Prev/Next
  *              buttons would not be.
  *
- * LAST UPDATED: 2026-11-02 - Remount the form on every open (Josh Iehle)
+ * LAST UPDATED: 2026-11-17 - Your balance and the settlement view (Josh Iehle)
+ *               2026-11-02 - Remount the form on every open (Josh Iehle)
  *               2026-11-02 - Add, edit and delete (Josh Iehle)
  *               2026-11-02 - Detail modal (Josh Iehle)
  *               2026-11-02 - Real list, search and sort (Josh Iehle)
@@ -42,11 +38,13 @@ import { formatCents } from '../../lib/format';
 import { unpackSort } from '../../lib/listParams';
 
 // -------------------- Hook imports --------------------
+import { useBalances } from '../../hooks/expenses/useBalances';
 import { useDeleteExpense } from '../../hooks/expenses/useDeleteExpense';
 import { useExpenses } from '../../hooks/expenses/useExpenses';
 import { useListQueryState } from '../../hooks/useListQueryState';
 
 // -------------------- Component imports --------------------
+import { BalancesModal } from '../../components/expenses/BalancesModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EmptyState } from '../../components/list/EmptyState';
 import { ExpenseDetailModal } from '../../components/expenses/ExpenseDetailModal';
@@ -62,14 +60,15 @@ import { ListToolbar } from '../../components/list/ListToolbar';
  * The data each dialog needs lives in its own variant: the detail modal has a
  * list row (enough for its header), while edit and delete carry the full
  * detail, because the form needs the participant list and the row does not
- * have it.
+ * have it. `balances` needs nothing - it reads a query of its own.
  */
 type Dialog =
   | { kind: 'none' }
   | { kind: 'detail'; expense: ExpenseListItem }
   | { kind: 'create' }
   | { kind: 'edit'; expense: ExpenseDetail }
-  | { kind: 'delete'; expense: ExpenseDetail };
+  | { kind: 'delete'; expense: ExpenseDetail }
+  | { kind: 'balances' };
 
 const CLOSED: Dialog = { kind: 'none' };
 
@@ -103,17 +102,31 @@ const SORT_OPTIONS = [
 // -------------------- Internal Components --------------------
 
 /**
- * The money line under the heading.
+ * Your position on this trip, in words.
  *
- * `totalCents` is the TRIP's total, computed server-side and unaffected by the
- * search box. "Your Balance" belongs beside this and arrives with E-6.
+ * "You owe $120" rather than "-$120.00". Both directions are normal on this
+ * screen, so a bare signed number makes the reader work out what the sign
+ * means before they can read the number.
+ *
+ * `balanceCents` is undefined while the query is in flight. Rendering nothing
+ * beats rendering a zero that is about to change into something else - a
+ * money figure that flickers from "settled up" to "you owe $120" reads as a
+ * bug even when it is not.
  */
-function ExpenseSummary({ totalCents }: { totalCents: number }) {
+function YourBalance({ balanceCents }: { balanceCents: number | undefined }) {
+  if (balanceCents === undefined) return null;
+
+  if (balanceCents === 0) {
+    return <span className="font-semibold text-ink-900">You are settled up</span>;
+  }
+
+  const owed = balanceCents < 0;
+
   return (
-    <p className="mt-1 text-sm text-ink-700">
-      Total Trip Spending:{' '}
-      <span className="font-semibold text-ink-900 tabular-nums">{formatCents(totalCents)}</span>
-    </p>
+    <span className={`font-semibold tabular-nums ${owed ? 'text-red-700' : 'text-green-700'}`}>
+      {owed ? 'You owe ' : "You're owed "}
+      {formatCents(Math.abs(balanceCents))}
+    </span>
   );
 }
 
@@ -136,6 +149,10 @@ export function ExpensesPage() {
 
   const expenses = useExpenses(tripId, filters);
 
+  // Same hook, same key, as BalancesModal. One request serves both, so the
+  // modal opens on numbers that are already there.
+  const balances = useBalances(tripId);
+
   const results = expenses.data?.expenses ?? [];
   const totalCents = expenses.data?.totalCents ?? 0;
 
@@ -148,15 +165,36 @@ export function ExpensesPage() {
   // ----- 4. Form identity -----
   // Changes on every open, so the form modal remounts and re-reads `expense`.
   // See the note beside <ExpenseFormModal> below.
-  const formKey =
-    dialog.kind === 'edit' ? `edit:${dialog.expense.id}` : `${dialog.kind}:new`;
+  const formKey = dialog.kind === 'edit' ? `edit:${dialog.expense.id}` : `${dialog.kind}:new`;
 
   // ----- 5. Render -----
   return (
     <div>
       <div>
         <h1 className="text-2xl font-semibold text-ink-900">Trip Expenses</h1>
-        <ExpenseSummary totalCents={totalCents} />
+
+        {/* The two headline numbers, and the way into the settlement view.
+            flex-wrap so they stack rather than overflow on a phone. */}
+        <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-ink-700">
+          <span>
+            Total Trip Spending:{' '}
+            <span className="font-semibold text-ink-900 tabular-nums">
+              {formatCents(totalCents)}
+            </span>
+          </span>
+
+          <span>
+            Your Balance: <YourBalance balanceCents={balances.data?.yourBalanceCents} />
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setDialog({ kind: 'balances' })}
+            className="cursor-pointer font-medium text-brand-600 underline duration-150 hover:text-brand-700"
+          >
+            View balances
+          </button>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -249,7 +287,7 @@ export function ExpensesPage() {
       </div>
 
       {/* ---------- Dialogs ----------
-          All three stay mounted and hide themselves. Each `open` reads the
+          All four stay mounted and hide themselves. Each `open` reads the
           union, so opening one necessarily closes the others. */}
 
       <ExpenseDetailModal
@@ -275,6 +313,12 @@ export function ExpensesPage() {
         onClose={() => setDialog(CLOSED)}
         tripId={tripId}
         expense={dialog.kind === 'edit' ? dialog.expense : undefined}
+      />
+
+      <BalancesModal
+        open={dialog.kind === 'balances'}
+        onClose={() => setDialog(CLOSED)}
+        tripId={tripId}
       />
 
       <ConfirmDialog

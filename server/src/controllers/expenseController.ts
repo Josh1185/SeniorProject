@@ -2,7 +2,8 @@
  * FILE: expenseController.ts
  * DESCRIPTION: Endpoint controllers for the expense module.
  *
- * LAST UPDATED: 2026-11-02 - Add trip-wide expense total in list response
+ * LAST UPDATED: 2026-11-17 - Settlement handling (Josh Iehle)
+ *               2026-11-02 - Add trip-wide expense total in list response (Josh Iehle)
  *               2026-10-20 - Add create and update, fix delete status (Josh Iehle)
  *               2026-10-19 - Add Delete Expense Controller (Josh Iehle)
  *               2026-10-18 - File Created (Josh Iehle)
@@ -27,6 +28,11 @@ import badRequest from '../utils/badRequest';
 import unauthorized from '../utils/unauthorized';
 import notFound from '../utils/notFound';
 import { splitEqually } from '../utils/money';
+import {
+  balancesNetToZero,
+  computeBalances,
+  settleBalances,
+} from '../utils/settlement';
 
 // -------------------- Shared Selects --------------------
 
@@ -243,6 +249,146 @@ export async function getExpenseById(req: Request, res: Response) {
 
   // ----- 6. Respond with formatted expense data -----
   res.json({ expense });
+}
+
+// -------------------- GET /api/trips/:tripId/expenses/balances --------------
+
+/**
+ * Who owes who on this trip.
+ *
+ * NOTHING HERE IS STORED. There is no balance column and no Settlement table:
+ * a stored balance is a cache of a sum, and a cache of a sum goes stale the
+ * first time an expense is edited by code that forgot to update it.
+ * Recomputing is cheap at this scale and cannot drift.
+ */
+export async function getTripBalances(req: Request, res: Response) {
+  // ----- 1. Check that the user is mounted to the request -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve the trip id from the req params -----
+  const tripId = req.params.tripId;
+
+  // ----- 3. Validate that the trip ID exists as a string -----
+  if (typeof tripId !== 'string') {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  // ----- 4. Read everything in ONE transaction -----
+  //
+  // Four queries that have to agree with each other. An expense created
+  // between the "paid" query and the "owed" query would land in one and not
+  // the other, and the balances would not net to zero - a failure that would
+  // look like an arithmetic bug and be nearly impossible to reproduce.
+  // One snapshot, one consistent answer.
+  const { members, paidRows, owedRows, users } = await prisma.$transaction(async (tx) => {
+    const members = await tx.tripMember.findMany({
+      where: { tripId },
+      select: { userId: true },
+    });
+
+    // Sum of what each person PAID OUT for the group.
+    const paidRows = await tx.expense.groupBy({
+      by: ['paidById'],
+      where: { tripId },
+      _sum: { amountCents: true },
+    });
+
+    // Sum of each person's SHARES. The relation filter is what scopes this to
+    // one trip - ExpenseParticipant has no tripId of its own.
+    const owedRows = await tx.expenseParticipant.groupBy({
+      by: ['userId'],
+      where: { expense: { tripId } },
+      _sum: { shareCents: true },
+    });
+
+    // The union of current members and everyone who appears in the expenses.
+    //
+    // NOT just the roster. Someone who paid for dinner and was later removed
+    // from the trip still has their money in the pot - their expenses did not
+    // leave with them - and omitting them would make the balances fail to net
+    // to zero while looking perfectly reasonable on screen.
+    const userIds = [
+      ...new Set([
+        ...members.map((member) => member.userId),
+        ...paidRows.map((row) => row.paidById),
+        ...owedRows.map((row) => row.userId),
+      ]),
+    ];
+
+    const users = await tx.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, displayName: true },
+    });
+
+    return { members, paidRows, owedRows, users };
+  });
+
+  // ----- 5. Compute -----
+  const paidCentsByUser = Object.fromEntries(
+    paidRows.map((row) => [row.paidById, row._sum.amountCents ?? 0]),
+  );
+
+  const owedCentsByUser = Object.fromEntries(
+    owedRows.map((row) => [row.userId, row._sum.shareCents ?? 0]),
+  );
+
+  const userIds = users.map((user) => user.id);
+  const balances = computeBalances(userIds, paidCentsByUser, owedCentsByUser);
+
+  // ----- 6. Check the invariant before serving it -----
+  //
+  // The balances MUST sum to zero - every cent someone paid is a cent someone
+  // owes. They can only fail to if an expense's shares do not sum to its
+  // amount, which splitEqually and the re-split in updateExpense exist to
+  // prevent and which no database constraint can enforce.
+  //
+  // Logged, not thrown: the numbers are still the best available answer and
+  // refusing to show them helps nobody. But this is the line that turns a
+  // silent drift into something searchable in the server log.
+  if (!balancesNetToZero(balances)) {
+    console.error(
+      `Trip ${tripId}: balances do not net to zero. An expense's shares do not ` +
+        `sum to its amount. ${JSON.stringify(balances)}`,
+    );
+  }
+
+  const settlements = settleBalances(balances);
+
+  // ----- 7. Attach the names -----
+  const userById = new Map(users.map((user) => [user.id, user]));
+  const memberIds = new Set(members.map((member) => member.userId));
+
+  const payload = balances.map((entry) => ({
+    user: userById.get(entry.userId) ?? { id: entry.userId, displayName: 'Unknown' },
+    paidCents: entry.paidCents,
+    owedCents: entry.owedCents,
+    balanceCents: entry.balanceCents,
+    // False for someone who was removed from the trip but still has money in
+    // it. The client labels them rather than hiding them.
+    isMember: memberIds.has(entry.userId),
+  }));
+
+  // ----- 8. Respond -----
+  res.json({
+    balances: payload,
+    settlements: settlements.map((settlement) => ({
+      from: userById.get(settlement.fromUserId) ?? {
+        id: settlement.fromUserId,
+        displayName: 'Unknown',
+      },
+      to: userById.get(settlement.toUserId) ?? {
+        id: settlement.toUserId,
+        displayName: 'Unknown',
+      },
+      amountCents: settlement.amountCents,
+    })),
+    // Saves the client finding itself in the array for the one number the
+    // page shows without opening anything.
+    yourBalanceCents:
+      balances.find((entry) => entry.userId === req.user!.id)?.balanceCents ?? 0,
+  });
 }
 
 // -------------------- POST /api/trips/:tripId/expenses --------------------

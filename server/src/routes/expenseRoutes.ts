@@ -12,6 +12,7 @@ import { Router } from 'express';
 // -------------------- Controller Imports --------------------
 import {
   listExpenses,
+  getTripBalances,
   getExpenseById,
   deleteExpense,
   createExpense,
@@ -24,6 +25,14 @@ export const expenseRouter = Router({ mergeParams: true });
 // -------------------- Collection Routes --------------------
 expenseRouter.get('/', listExpenses);
 expenseRouter.post('/', createExpense);
+
+// BEFORE '/:expenseId'. Express matches in declaration order, so with
+// these the other way round '/balances' is swallowed by the parameter route
+// and the controller is handed an expense id of "balances" - a 404 that
+// looks like a missing record rather than a routing mistake.
+//
+// Same trap as '/me' before '/:userId' in memberRoutes.
+expenseRouter.get('/balances', getTripBalances);
 
 // -------------------- Single Expense Routes --------------------
 expenseRouter.get('/:expenseId', getExpenseById);
