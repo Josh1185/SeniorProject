@@ -55,3 +55,28 @@ Content-Type: application/json
 ### Delete the newly created activity
 DELETE {{baseUrl}}/trips/{{tripId}}/activities/{{newActivityId}}
 Authorization: Bearer {{token}}
+
+
+### Vote for an activity (expect 201)
+POST {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}/vote
+Authorization: Bearer {{token}}
+
+### Vote for the same activity again (expect 400)
+POST {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}/vote
+Authorization: Bearer {{token}}
+
+### Get activity details after voting (expect voteCount increased and hasVoted true)
+GET {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}
+Authorization: Bearer {{token}}
+
+### Remove vote from activity (expect 204)
+DELETE {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}/vote
+Authorization: Bearer {{token}}
+
+### Remove the same vote again (expect 400)
+DELETE {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}/vote
+Authorization: Bearer {{token}}
+
+### Get activity details after removing vote (expect voteCount decreased and hasVoted false)
+GET {{baseUrl}}/trips/{{tripId}}/activities/{{activityId}}
+Authorization: Bearer {{token}}

@@ -1,9 +1,10 @@
 /**
  * FILE: ActivitiesPage.tsx
  * DESCRIPTION: Displays a trip's activities with search, sorting,
- *              loading/error handling, and empty states.
+ *              voting, loading/error handling, and empty states.
  *
- * LAST UPDATED: 2026-11-12 - Connect activity creation modal (Brandon Douglass)
+ * LAST UPDATED: 2026-11-19 - Connect activity voting and un-voting (Brandon Douglass)
+ *               2026-11-12 - Connect activity creation, edit, delete modal (Brandon Douglass)
  *               2026-11-06 - Connect Activities detail modal (Brandon Douglass)
  *               2026-11-03 - Build Activities list page (Brandon Douglass)
  *               2026-10-11 - File Created (Josh Iehle)
@@ -22,6 +23,10 @@ import { unpackSort } from '../../lib/listParams';
 import { useActivities } from '../../hooks/activities/useActivities';
 import { useListQueryState } from '../../hooks/useListQueryState';
 import { useDeleteActivity } from '../../hooks/activities/useDeleteActivity';
+import {
+  useVoteForActivity,
+  useRemoveActivityVote,
+} from '../../hooks/activities/useActivityVoting';
 
 // -------------------- Component imports --------------------
 import { ActivityDetailModal } from '../../components/activities/ActivityDetailModal';
@@ -31,20 +36,13 @@ import { ListToolbar } from '../../components/list/ListToolbar';
 import { ActivityFormModal } from '../../components/activities/ActivityFormModal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 
-// -------------------- List Defaults --------------------
+// -------------------- List defaults --------------------
 
-/**
- * Search and sorting live in the URL.
- * The default shows the newest activities first.
- */
 const ACTIVITY_LIST_DEFAULTS = {
   search: '',
   sort: 'createdAt:desc',
 };
 
-// -------------------- Sort Options --------------------
-
-/** These options match the server's supported sort fields. */
 const SORT_OPTIONS = [
   { value: 'createdAt:desc', label: 'Sort: Recently added' },
   { value: 'createdAt:asc', label: 'Sort: Oldest first' },
@@ -57,47 +55,65 @@ const SORT_OPTIONS = [
 // -------------------- Component --------------------
 
 export function ActivitiesPage() {
-  // ----- 1. Identify the current trip -----
   const { tripId } = useParams();
 
-  // Tracks the activity selected from the list.
-  // null means no detail modal is open.
+  // -------------------- Modal and error state --------------------
+
   const [selectedActivity, setSelectedActivity] = useState<ActivityListItem | null>(null);
-
-  // Tracks whether the create activity form is open.
   const [showCreateModal, setShowCreateModal] = useState(false);
-
-  // Stores the full activity details while the edit form is open.
   const [editingActivity, setEditingActivity] = useState<ActivityDetail | null>(null);
-
-  // Stores the activity awaiting delete confirmation.
   const [deletingActivity, setDeletingActivity] = useState<ActivityDetail | null>(null);
-
-  // Stores an error message if deleting an activity fails.
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [voteError, setVoteError] = useState<string | null>(null);
 
-  // ----- 2. Read search and sort values from the URL -----
-  const list = useListQueryState({
-    defaults: ACTIVITY_LIST_DEFAULTS,
-  });
+  // -------------------- List filters --------------------
+
+  const list = useListQueryState({ defaults: ACTIVITY_LIST_DEFAULTS });
 
   const { sort, order } = unpackSort(list.values.sort, 'createdAt', 'desc');
 
-  // ----- 3. Build the API filters -----
   const filters: ActivityFilters = {
     search: list.values.search || undefined,
     sort: sort as ActivityFilters['sort'],
     order: order as ActivityFilters['order'],
   };
 
-  // ----- 4. Fetch activities -----
-  const activities = useActivities(tripId, filters);
+  // -------------------- Activity queries and mutations --------------------
 
-  // Handles deleting an activity and refreshing the activity list.
+  const activities = useActivities(tripId, filters);
   const deleteActivity = useDeleteActivity(tripId ?? '');
+
+  const voteForActivity = useVoteForActivity(tripId ?? '');
+  const removeActivityVote = useRemoveActivityVote(tripId ?? '');
+
+  const votingActivityId = voteForActivity.isPending
+    ? voteForActivity.variables
+    : removeActivityVote.isPending
+      ? removeActivityVote.variables
+      : null;
+
   const results = activities.data?.activities ?? [];
 
-  // ----- 5. Render the page -----
+  // -------------------- Voting handler --------------------
+
+  async function handleVote(activity: ActivityListItem) {
+    if (voteForActivity.isPending || removeActivityVote.isPending) return;
+
+    setVoteError(null);
+
+    try {
+      if (activity.hasVoted) {
+        await removeActivityVote.mutateAsync(activity.id);
+      } else {
+        await voteForActivity.mutateAsync(activity.id);
+      }
+    } catch (error) {
+      setVoteError(error instanceof Error ? error.message : 'Unable to update vote.');
+    }
+  }
+
+  // -------------------- Page layout --------------------
+
   return (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -115,7 +131,6 @@ export function ActivitiesPage() {
         </button>
       </div>
 
-      {/* Search and sorting controls */}
       <div className="mt-4">
         <ListToolbar
           searchValue={list.searchInput}
@@ -133,15 +148,14 @@ export function ActivitiesPage() {
       </div>
 
       <div className="mt-6">
-        {/* Loading state */}
         {activities.isLoading && (
           <p className="py-12 text-center text-ink-700">Loading activities…</p>
         )}
 
-        {/* Error state with retry */}
         {activities.error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-5">
             <p className="text-sm text-red-700">{(activities.error as Error).message}</p>
+
             <button
               type="button"
               onClick={() => void activities.refetch()}
@@ -152,7 +166,6 @@ export function ActivitiesPage() {
           </div>
         )}
 
-        {/* Empty trip or no matching search results */}
         {!activities.isLoading && !activities.error && results.length === 0 && (
           <EmptyState
             title={list.isFiltered ? 'No activities match your search' : 'No activities yet'}
@@ -175,10 +188,14 @@ export function ActivitiesPage() {
           />
         )}
 
-        {/* Activity results */}
         {!activities.isLoading && !activities.error && results.length > 0 && (
           <>
-            <ActivityList activities={results} onActivityClick={setSelectedActivity} />
+            <ActivityList
+              activities={results}
+              onActivityClick={setSelectedActivity}
+              onVote={(activity) => void handleVote(activity)}
+              votingActivityId={votingActivityId}
+            />
 
             <p className="mt-4 text-sm text-ink-700">
               Showing {results.length} {results.length === 1 ? 'activity' : 'activities'}
@@ -186,7 +203,17 @@ export function ActivitiesPage() {
           </>
         )}
       </div>
-      {/* Display the full details of the selected activity. */}
+
+      {/* -------------------- Voting error -------------------- */}
+
+      {voteError && (
+        <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{voteError}</p>
+        </div>
+      )}
+
+      {/* -------------------- Activity detail modal -------------------- */}
+
       <ActivityDetailModal
         tripId={tripId}
         activity={selectedActivity}
@@ -202,7 +229,8 @@ export function ActivitiesPage() {
         }}
       />
 
-      {/* Create a new activity. */}
+      {/* -------------------- Create activity modal -------------------- */}
+
       {showCreateModal && (
         <ActivityFormModal
           key="create-activity"
@@ -211,7 +239,9 @@ export function ActivitiesPage() {
           onClose={() => setShowCreateModal(false)}
         />
       )}
-      {/* Edit an existing activity. */}
+
+      {/* -------------------- Edit activity modal -------------------- */}
+
       {editingActivity && (
         <ActivityFormModal
           key={editingActivity.id}
@@ -222,18 +252,20 @@ export function ActivitiesPage() {
         />
       )}
 
-      {/* Display delete errors without modifying the shared dialog. */}
+      {/* -------------------- Delete error -------------------- */}
+
       {deleteError && deletingActivity && (
         <div
           role="alert"
-          className="fixed bottom-6 right-6 z-[100] max-w-sm rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700 shadow-lg"
+          className="fixed bottom-6 right-6 z-100 max-w-sm rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-700 shadow-lg"
         >
           <p className="font-medium">Unable to delete activity</p>
           <p className="mt-1">{deleteError}</p>
         </div>
       )}
 
-      {/* Confirm before permanently deleting an activity. */}
+      {/* -------------------- Delete confirmation -------------------- */}
+
       <ConfirmDialog
         open={Boolean(deletingActivity)}
         onClose={() => {

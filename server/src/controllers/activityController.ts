@@ -1,8 +1,9 @@
 /**
  * FILE: activityController.ts
- * DESCRIPTION: Handles requests to list, view, create, update, and delete activities.
+ * DESCRIPTION: Handles requests to list, view, create, update, delete and vote on activities.
  *
- * LAST UPDATED: 2026-11-12 - Save suggested date/time in activity create/update (Brandon Douglass)
+ * LAST UPDATED: 2026-11-19 - Add activity voting and vote removal controllers (Brandon Douglass)
+ *               2026-11-12 - Save suggested date/time in activity create/update (Brandon Douglass)
  *               2026-10-30 - Add POST, PATCH, and DELETE activity controllers (Brandon Douglass)
  *               2026-10-24 - Code Review Refactor (Josh Iehle)
  *               2026-10-19 - File Created (Brandon Douglass)
@@ -13,6 +14,7 @@ import type { Request, Response } from 'express';
 
 // -------------------- Module imports --------------------
 import { prisma } from '../lib/prisma';
+import { Prisma } from '../generated/prisma/client';
 
 // -------------------- Schema imports --------------------
 import {
@@ -398,4 +400,115 @@ export async function deleteActivity(req: Request, res: Response) {
 
   // ----- 6. Respond with HTTP 204 (No Content) -----
   res.status(204).end();
+}
+
+// -------------------- POST /api/trips/:tripId/activities/:activityId/vote --------------------
+
+/**
+ * Adds the current user's vote to an activity.
+ * The database unique constraint prevents duplicate votes.
+ */
+export async function voteForActivity(req: Request, res: Response) {
+  // ----- 1. Check that the user is authenticated -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve and validate the IDs -----
+  const tripId = req.params.tripId;
+  const activityId = req.params.activityId;
+  const userId = req.user.id;
+
+  if (typeof tripId !== 'string' || !tripId) {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  if (typeof activityId !== 'string' || !activityId) {
+    return badRequest(res, 'Missing activity id');
+  }
+
+  // ----- 3. Confirm the activity belongs to this trip -----
+  const activity = await prisma.activity.findFirst({
+    where: { id: activityId, tripId },
+    select: { id: true },
+  });
+
+  if (!activity) {
+    return notFound(res, 'Activity not found');
+  }
+
+  // ----- 4. Check whether the user already voted -----
+  const existingVote = await prisma.activityVote.findUnique({
+    where: { activityId_userId: { activityId, userId } },
+    select: { id: true },
+  });
+
+  if (existingVote) {
+    return badRequest(res, 'You have already voted for this activity');
+  }
+
+  // ----- 5. Create the vote -----
+  try {
+    const vote = await prisma.activityVote.create({
+      data: { activityId, userId },
+      select: { id: true, activityId: true, userId: true },
+    });
+
+    // ----- 6. Respond with HTTP 201 -----
+    return res.status(201).json({ vote });
+  } catch (error) {
+    // Handle a duplicate request that passes the initial check.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return badRequest(res, 'You have already voted for this activity');
+    }
+
+    throw error;
+  }
+}
+
+// -------------------- DELETE /api/trips/:tripId/activities/:activityId/vote --------------------
+
+/**
+ * Removes the current user's vote from an activity.
+ */
+export async function removeActivityVote(req: Request, res: Response) {
+  // ----- 1. Check that the user is authenticated -----
+  if (!req.user) {
+    return unauthorized(res, 'Not signed in');
+  }
+
+  // ----- 2. Retrieve and validate the IDs -----
+  const tripId = req.params.tripId;
+  const activityId = req.params.activityId;
+  const userId = req.user.id;
+
+  if (typeof tripId !== 'string' || !tripId) {
+    return badRequest(res, 'Missing trip id');
+  }
+
+  if (typeof activityId !== 'string' || !activityId) {
+    return badRequest(res, 'Missing activity id');
+  }
+
+  // ----- 3. Confirm the activity belongs to this trip -----
+  const activity = await prisma.activity.findFirst({
+    where: { id: activityId, tripId },
+    select: { id: true },
+  });
+
+  if (!activity) {
+    return notFound(res, 'Activity not found');
+  }
+
+  // ----- 4. Remove only the current user's vote -----
+  const result = await prisma.activityVote.deleteMany({
+    where: { activityId, userId },
+  });
+
+  if (result.count === 0) {
+    return badRequest(res, 'You have not voted for this activity');
+  }
+
+  // ----- 5. Respond with HTTP 204 -----
+  return res.status(204).end();
 }
