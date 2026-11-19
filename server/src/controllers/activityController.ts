@@ -2,7 +2,8 @@
  * FILE: activityController.ts
  * DESCRIPTION: Handles requests to list, view, create, update, and delete activities.
  *
- * LAST UPDATED: 2026-10-30 - Add POST, PATCH, and DELETE activity controllers (Brandon Douglass)
+ * LAST UPDATED: 2026-11-12 - Save suggested date/time in activity create/update (Brandon Douglass)
+ *               2026-10-30 - Add POST, PATCH, and DELETE activity controllers (Brandon Douglass)
  *               2026-10-24 - Code Review Refactor (Josh Iehle)
  *               2026-10-19 - File Created (Brandon Douglass)
  */
@@ -244,6 +245,9 @@ export async function createActivity(req: Request, res: Response) {
       createdById: req.user.id,
       name: body.name,
       description: body.description,
+      suggestedDateTime: body.suggestedDateTime
+        ? new Date(body.suggestedDateTime)
+        : body.suggestedDateTime,
       locationName: body.locationName,
       locationAddress: body.locationAddress,
       latitude: body.latitude,
@@ -254,6 +258,7 @@ export async function createActivity(req: Request, res: Response) {
       id: true,
       name: true,
       description: true,
+      suggestedDateTime: true,
       locationName: true,
       locationAddress: true,
       latitude: true,
@@ -318,6 +323,9 @@ export async function updateActivity(req: Request, res: Response) {
     data: {
       name: body.name,
       description: body.description,
+      suggestedDateTime: body.suggestedDateTime
+        ? new Date(body.suggestedDateTime)
+        : body.suggestedDateTime,
       locationName: body.locationName,
       locationAddress: body.locationAddress,
       latitude: body.latitude,
@@ -328,6 +336,7 @@ export async function updateActivity(req: Request, res: Response) {
       id: true,
       name: true,
       description: true,
+      suggestedDateTime: true,
       locationName: true,
       locationAddress: true,
       latitude: true,

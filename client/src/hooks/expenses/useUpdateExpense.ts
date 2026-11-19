@@ -27,12 +27,10 @@ export function useUpdateExpense(tripId: string, expenseId: string) {
     // BOTH caches. Changing an amount changes the detail modal's shares AND
     // the row in the list AND the trip total; forgetting the second is why an
     // edit sometimes looks like it did not save until you refresh.
-    //
-    // WHEN E-6 LANDS: add the balances query. An edited amount re-splits the
-    // expense, so every balance derived from it has moved.
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: expenseKeys.detail(tripId, expenseId) });
       void queryClient.invalidateQueries({ queryKey: expenseKeys.lists(tripId) });
+      void queryClient.invalidateQueries({ queryKey: expenseKeys.balances(tripId) })
     },
   });
 }

@@ -30,9 +30,16 @@ function describeCost(cost: number | null): string {
   return cost === null ? 'Not specified' : formatCents(cost);
 }
 
-/** Displays a readable date when one has been suggested. */
+/** Displays the activity's date and time when scheduled. */
 function describeDate(date: string | null): string {
-  return date === null ? 'Not scheduled' : formatDate(date);
+  if (date === null) return 'Not scheduled';
+
+  const time = new Date(date).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  return `${formatDate(date)} at ${time}`;
 }
 
 /** Displays the number of votes with correct singular/plural wording. */
@@ -79,7 +86,7 @@ const ACTIVITY_COLUMNS: Column<ActivityListItem>[] = [
     className: 'text-sm text-ink-700',
   },
   {
-    header: 'Suggested Date',
+    header: 'Date & Time',
     cell: (activity) => describeDate(activity.suggestedDateTime),
     className: 'text-sm text-ink-700',
   },
