@@ -18,6 +18,7 @@ interface ItineraryListProps {
   startDate: string;
   endDate: string;
   events: ItineraryEvent[];
+  showAddEvent?: boolean;
 }
 
 // -------------------- Date Helpers --------------------
@@ -84,6 +85,7 @@ export function ItineraryList({
   startDate,
   endDate,
   events,
+  showAddEvent = true,
 }: ItineraryListProps) {
   const [selectedEventId, setSelectedEventId] = useState<
     string | undefined
@@ -119,16 +121,18 @@ export function ItineraryList({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          disabled={!tripId}
-          className="cursor-pointer rounded-md border border-ink-300 bg-ink-50 px-4 py-2 text-sm font-medium text-ink-900 duration-150 hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Add Event
-        </button>
-      </div>
+      {showAddEvent && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            disabled={!tripId}
+            className="cursor-pointer rounded-md border border-ink-300 bg-ink-50 px-4 py-2 text-sm font-medium text-ink-900 duration-150 hover:bg-ink-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Add Event
+          </button>
+        </div>
+    )}
 
       {days.length === 0 ? (
         <EmptyState

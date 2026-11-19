@@ -190,34 +190,36 @@ export function OverviewPage() {
         </Card>
 
         <Card title="Itinerary">
-  {itinerary.isLoading && (
-    <p className="text-sm text-ink-700">Loading itinerary…</p>
-  )}
+  <div className="max-h-[400px] overflow-y-auto pr-2">
+    {itinerary.isLoading && (
+      <p className="text-sm text-ink-700">Loading itinerary…</p>
+    )}
 
-  {itinerary.error && (
-    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-      <p className="text-sm text-red-700">
-        {(itinerary.error as Error).message}
-      </p>
+    {itinerary.error && (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+        <p className="text-sm text-red-700">
+          {(itinerary.error as Error).message}
+        </p>
+        <button
+          type="button"
+          onClick={() => void itinerary.refetch()}
+          className="mt-2 cursor-pointer text-sm text-red-700 underline"
+        >
+          Try again
+        </button>
+      </div>
+    )}
 
-      <button
-        type="button"
-        onClick={() => void itinerary.refetch()}
-        className="mt-2 cursor-pointer text-sm text-red-700 underline"
-      >
-        Try again
-      </button>
-    </div>
-  )}
-
-  {!itinerary.isLoading && !itinerary.error && itinerary.data && (
-  <ItineraryList
-    tripId={tripId}
-    startDate={itinerary.data.startDate}
-    endDate={itinerary.data.endDate}
-    events={itinerary.data.events}
-  />
-)}
+    {!itinerary.isLoading && !itinerary.error && itinerary.data && (
+      <ItineraryList
+        tripId={tripId}
+        startDate={itinerary.data.startDate}
+        endDate={itinerary.data.endDate}
+        events={itinerary.data.events}
+        showAddEvent={false}
+      />
+    )}
+  </div>
 </Card>
 
         <Card title="Expenses">
