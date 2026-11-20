@@ -2,7 +2,8 @@
  * FILE: activityService.ts
  * DESCRIPTION: API requests for the Activities feature.
  *
- * LAST UPDATED: 2026-11-12 - Add activity create, update, and delete API requests (Brandon Douglass)
+ * LAST UPDATED: 2026-11-19 - Add activity vote and un-vote API requests (Brandon Douglass)
+ *               2026-11-12 - Add activity create, update, and delete API requests (Brandon Douglass)
  *               2026-11-06 - Add activity detail API request (Brandon Douglass)
  *               2026-11-03 - File Created (Brandon Douglass)
  */
@@ -81,4 +82,14 @@ export function updateActivity(tripId: string, activityId: string, body: UpdateA
 /** DELETE /api/trips/:tripId/activities/:activityId */
 export function deleteActivity(tripId: string, activityId: string): Promise<void> {
   return del(`/trips/${tripId}/activities/${activityId}`);
+}
+
+/** POST /api/trips/:tripId/activities/:activityId/vote */
+export function voteForActivity(tripId: string, activityId: string) {
+  return post(`/trips/${tripId}/activities/${activityId}/vote`, {});
+}
+
+/** DELETE /api/trips/:tripId/activities/:activityId/vote */
+export function removeActivityVote(tripId: string, activityId: string): Promise<void> {
+  return del(`/trips/${tripId}/activities/${activityId}/vote`);
 }

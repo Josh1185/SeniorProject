@@ -1,8 +1,9 @@
 /**
  * FILE: activityRoutes.ts
- * DESCRIPTION: Defines routes for listing, viewing, creating, updating, and deleting trip activities.
+ * DESCRIPTION: Defines routes for listing, viewing, creating, updating, deleting and voting ontrip activities.
  *
- * LAST UPDATED: 2026-10-30 - Add POST, PATCH, and DELETE activity routes (Brandon Douglass)
+ * LAST UPDATED: 2026-11-19 - Add activity voting and vote removal routes (Brandon Douglass)
+ *               2026-10-30 - Add POST, PATCH, and DELETE activity routes (Brandon Douglass)
  *               2026-10-24 - Code Review Refactor (Josh Iehle)
  *               2026-10-19 - File Created (Brandon Douglass)
  */
@@ -17,6 +18,8 @@ import {
   createActivity,
   updateActivity,
   deleteActivity,
+  voteForActivity,
+  removeActivityVote,
 } from '../controllers/activityController';
 
 // -------------------- Router Instance --------------------
@@ -30,3 +33,7 @@ activityRouter.post('/', createActivity);
 activityRouter.get('/:activityId', getActivityById);
 activityRouter.patch('/:activityId', updateActivity);
 activityRouter.delete('/:activityId', deleteActivity);
+
+// -------------------- Activity Voting Routes --------------------
+activityRouter.post('/:activityId/vote', voteForActivity);
+activityRouter.delete('/:activityId/vote', removeActivityVote);
