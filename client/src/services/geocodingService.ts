@@ -176,6 +176,6 @@ export async function searchPlaces(
         };
       })
       // A feature with no id or no label is unusable in a listbox.
-      .filter((place) => place.id && place.label)
+      .filter((place) => place.id && place.label && place.longitude !== 0)
   );
 }
