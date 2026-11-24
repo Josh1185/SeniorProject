@@ -1,7 +1,8 @@
-
 /**
  * FILE: ItineraryEventDetailModal.tsx
  * DESCRIPTION: Displays the full details of an individual itinerary event.
+ *
+ * LAST UPDATED: 2026-11-23 - Replace the Coordinates field with MapView (Josh Iehle)
  */
 
 // -------------------- React imports --------------------
@@ -13,6 +14,7 @@ import type { ItineraryEventDetail } from '../../types/api';
 // -------------------- Component imports --------------------
 import { DetailModal, DetailField } from '../DetailModal';
 import { ConfirmDialog } from '../ConfirmDialog';
+import { MapView } from '../MapView';
 
 // -------------------- Hook imports --------------------
 import { useItineraryEvent } from '../../hooks/itinerary/useItineraryEvent';
@@ -124,11 +126,24 @@ export function ItineraryEventDetailModal({
         <DetailField label="Address" full>
           {event?.locationAddress}
         </DetailField>
-        <DetailField label="Coordinates" full>
-          {event?.latitude != null && event?.longitude != null
-            ? `${event.latitude}, ${event.longitude}`
-            : undefined}
-        </DetailField>
+
+        {/*
+          THIS REPLACES THE "Coordinates" FIELD. "28.474012, -81.468170" is
+          the raw column, not information - nobody reading an itinerary can
+          tell from two decimals whether that is the right hotel. The map says
+          the same thing in a form a person can actually check, and the link
+          below it is what they wanted the number for anyway.
+
+          Same coordinates, same nullability: when they are missing, MapView
+          renders nothing rather than an em dash for a field no reader asked
+          about.
+        */}
+        <MapView
+          latitude={event?.latitude}
+          longitude={event?.longitude}
+          label={event?.locationName ?? event?.locationAddress ?? null}
+          className="sm:col-span-2"
+        />
       </DetailModal>
 
       <ConfirmDialog

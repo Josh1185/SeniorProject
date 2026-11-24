@@ -2,7 +2,8 @@
  * FILE: ReservationDetailModal.tsx
  * DESCRIPTION: Reservation detail view with edit and delete actions.
  *
- * LAST UPDATED: 2026-11-12 - Add R5 actions (Antony Benitez)
+ * LAST UPDATED: 2026-11-23 - Wire in MapView under the address (Josh Iehle)
+ *               2026-11-12 - Add R5 actions (Antony Benitez)
  */
 
 // -------------------- Type imports --------------------
@@ -16,6 +17,7 @@ import type {
 // -------------------- Component imports --------------------
 
 import { DetailModal, DetailField } from '../DetailModal';
+import { MapView } from '../MapView';
 
 // -------------------- Hook imports --------------------
 
@@ -155,6 +157,22 @@ export function ReservationDetailModal({
           <DetailField label="Address" full>
             {detail.locationAddress}
           </DetailField>
+
+          {/*
+            Under the address, above the notes.
+
+            A hotel or a restaurant is the case this earns its keep: the
+            confirmation number tells you the booking exists, the map tells
+            you whether it is the branch you meant. MapView renders nothing
+            when the place has no coordinates, so a flight - which usually
+            has none - simply shows no map.
+          */}
+          <MapView
+            latitude={detail.latitude}
+            longitude={detail.longitude}
+            label={detail.locationName ?? detail.locationAddress ?? null}
+            className="sm:col-span-2"
+          />
 
           <DetailField label="Notes" full>
             {detail.notes}
