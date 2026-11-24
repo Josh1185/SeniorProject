@@ -2,7 +2,8 @@
  * FILE: ActivityDetailModal.tsx
  * DESCRIPTION: Displays one activity's full details in a read-only modal.
  *
- * LAST UPDATED: 2026-11-12 - Add activity edit and delete callbacks and action buttons (Brandon Douglass)
+ * LAST UPDATED: 2026-11-23 - Wire in MapView under the address (Josh Iehle)
+ *               2026-11-12 - Add activity edit and delete callbacks and action buttons (Brandon Douglass)
  *               2026-11-06 - File Created (Brandon Douglass)
  */
 
@@ -17,6 +18,7 @@ import { useActivity } from '../../hooks/activities/useActivity';
 
 // -------------------- Component imports --------------------
 import { DetailField, DetailModal } from '../DetailModal';
+import { MapView } from '../MapView';
 
 // -------------------- Props interface --------------------
 interface ActivityDetailModalProps {
@@ -51,10 +53,23 @@ export function ActivityDetailModal({
     >
       <DetailField label="Location">{data?.locationName}</DetailField>
 
-      {/* Address is text-only. Map integration belongs to Sprint 3. */}
       <DetailField label="Address" full>
         {data?.locationAddress}
       </DetailField>
+
+      {/*
+        The map goes directly under the address it belongs to.
+
+        No conditional needed: MapView renders nothing when the coordinates are
+        null, which covers both the loading state and an activity whose
+        location was typed freehand rather than picked from the geocoder.
+      */}
+      <MapView
+        latitude={data?.latitude}
+        longitude={data?.longitude}
+        label={data?.locationName ?? data?.locationAddress ?? null}
+        className="sm:col-span-2"
+      />
 
       <DetailField label="Date & Time">
         {data?.suggestedDateTime
