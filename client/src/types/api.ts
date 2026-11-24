@@ -351,6 +351,16 @@ export interface ItineraryEventDetail {
   locationAddress: string | null;
   latitude: number | null;
   longitude: number | null;
+  activityId: string | null;
+  reservationId: string | null;
+  activity: {
+    id: string;
+    name: string;
+  } | null;
+  reservation: {
+    id: string;
+    name: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -369,6 +379,8 @@ export interface CreateItineraryEventBody {
   locationAddress?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  activityId?: string | null;
+  reservationId?: string | null;
 }
 
 export type UpdateItineraryEventBody =

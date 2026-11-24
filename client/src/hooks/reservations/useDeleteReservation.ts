@@ -7,7 +7,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { reservationKeys } from '../../lib/queryKeys';
+import { reservationKeys, itineraryKeys } from '../../lib/queryKeys';
 import { deleteReservation } from '../../services/reservationService';
 
 export function useDeleteReservation(
@@ -26,6 +26,10 @@ export function useDeleteReservation(
 
       void queryClient.invalidateQueries({
         queryKey: reservationKeys.lists(tripId),
+      });
+      // Refresh itinerary event details after the linked reservation is deleted.
+      void queryClient.invalidateQueries({
+        queryKey: itineraryKeys.details(tripId),
       });
     },
   });

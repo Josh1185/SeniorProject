@@ -20,6 +20,16 @@ const coordinatesPairedError = {
   path: ['latitude'],
 };
 
+const itineraryLinksExclusive = (data: {
+  activityId?: string | null;
+  reservationId?: string | null;
+}) => !(data.activityId != null && data.reservationId != null);
+
+const itineraryLinksExclusiveError = {
+  message: 'An itinerary event cannot link to both an activity and a reservation',
+  path: ['reservationId'],
+};
+
 // -------------------- Shared Event Fields --------------------
 
 const itineraryEventFields = z.object({
@@ -40,6 +50,10 @@ const itineraryEventFields = z.object({
   latitude: z.number().min(-90).max(90).nullable().optional(),
 
   longitude: z.number().min(-180).max(180).nullable().optional(),
+
+  activityId: z.uuid().nullable().optional(),
+
+  reservationId: z.uuid().nullable().optional(),
 });
 
 // -------------------- Create Schema --------------------
@@ -54,7 +68,8 @@ export const createItineraryEventSchema = itineraryEventFields
       path: ['endDateTime'],
     },
   )
-  .refine(coordinatesPaired, coordinatesPairedError);
+  .refine(coordinatesPaired, coordinatesPairedError)
+  .refine(itineraryLinksExclusive, itineraryLinksExclusiveError);
 
 export type CreateItineraryEventInput = z.infer<
   typeof createItineraryEventSchema
@@ -85,7 +100,8 @@ export const updateItineraryEventSchema = itineraryEventFields
       path: ['endDateTime'],
     },
   )
-  .refine(coordinatesPaired, coordinatesPairedError);
+  .refine(coordinatesPaired, coordinatesPairedError)
+  .refine(itineraryLinksExclusive, itineraryLinksExclusiveError);
 
 export type UpdateItineraryEventInput = z.infer<
   typeof updateItineraryEventSchema

@@ -20,6 +20,10 @@ import { useCreateItineraryEvent } from '../../hooks/itinerary/useCreateItinerar
 import { useUpdateItineraryEvent } from '../../hooks/itinerary/useUpdateItineraryEvent';
 import { emptyLocation } from '../../lib/location';
 import { LocationPicker } from '../LocationPicker';
+import { useActivities } from '../../hooks/activities/useActivities';
+import { useReservations } from '../../hooks/reservations/useReservations';
+import { FormField } from '../form/FormField';
+import { controlClasses } from '../form/fieldStyles';
 
 // -------------------- Types --------------------
 
@@ -119,6 +123,28 @@ export function ItineraryEventFormModal({
   );
 
   const isEdit = Boolean(event);
+  const [linkType, setLinkType] = useState<
+  'none' | 'activity' | 'reservation'
+>(() =>
+  event?.activityId
+    ? 'activity'
+    : event?.reservationId
+      ? 'reservation'
+      : 'none',
+);
+
+const [linkedRecordId, setLinkedRecordId] = useState(
+  () => event?.activityId ?? event?.reservationId ?? '',
+);
+
+// Keep the selection synchronized if a different event is opened.
+
+
+const activitiesQuery = useActivities(tripId);
+const reservationsQuery = useReservations(tripId);
+
+const activities = activitiesQuery.data?.activities ?? [];
+const reservations = reservationsQuery.data?.reservations ?? [];
   const [location, setLocation] = useState<LocationValue>(() => ({
     ...emptyLocation,
     label: event?.locationAddress ?? '',
@@ -198,6 +224,8 @@ export function ItineraryEventFormModal({
           locationAddress: location.label.trim() || null,
           latitude: location.latitude,
           longitude: location.longitude,
+          activityId: linkType === 'activity' ? linkedRecordId || null : null,
+          reservationId: linkType === 'reservation' ? linkedRecordId || null : null,
         };
 
         if (event) {
@@ -266,6 +294,75 @@ export function ItineraryEventFormModal({
           error={state.fieldErrors?.endDateTime}
           hint="Optional. Must be after the start date and time."
         />
+
+        <FormField label="Link to">
+          {({ id, describedBy, invalid }) => (
+            <select
+              id={id}
+              value={linkType}
+              onChange={(event) => {
+                const nextType = event.target.value as
+                  | 'none'
+                  | 'activity'
+                  | 'reservation';
+
+                setLinkType(nextType);
+                setLinkedRecordId('');
+              }}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              className={`${controlClasses(invalid)} cursor-pointer`}
+            >
+              <option value="none">None (standalone event)</option>
+              <option value="activity">Activity</option>
+              <option value="reservation">Reservation</option>
+            </select>
+          )}
+        </FormField>
+
+        {linkType === 'activity' && (
+          <FormField label="Activity">
+            {({ id, describedBy, invalid }) => (
+              <select
+                id={id}
+                value={linkedRecordId}
+                onChange={(event) => setLinkedRecordId(event.target.value)}
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className={`${controlClasses(invalid)} cursor-pointer`}
+              >
+                <option value="">Select an activity</option>
+                {activities.map((activity) => (
+                  <option key={activity.id} value={activity.id}>
+                    {activity.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+        )}
+
+        {linkType === 'reservation' && (
+          <FormField label="Reservation">
+            {({ id, describedBy, invalid }) => (
+              <select
+                id={id}
+                value={linkedRecordId}
+                onChange={(event) => setLinkedRecordId(event.target.value)}
+                aria-describedby={describedBy}
+                aria-invalid={invalid}
+                className={`${controlClasses(invalid)} cursor-pointer`}
+              >
+                <option value="">Select a reservation</option>
+                {reservations.map((reservation) => (
+                  <option key={reservation.id} value={reservation.id}>
+                    {reservation.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+        )}
 
         <TextField
           label="Location name"
