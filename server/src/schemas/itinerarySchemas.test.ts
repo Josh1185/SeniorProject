@@ -131,6 +131,55 @@ describe('createItineraryEventSchema', () => {
     expect(result.success).toBe(true);
   });
 
+    // ----- Activity and Reservation Links -----
+
+  it('accepts an event linked to an activity', () => {
+    expect(
+      createItineraryEventSchema.safeParse({
+        ...VALID_EVENT,
+        activityId: '550e8400-e29b-41d4-a716-446655440000',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts an event linked to a reservation', () => {
+    expect(
+      createItineraryEventSchema.safeParse({
+        ...VALID_EVENT,
+        reservationId: '550e8400-e29b-41d4-a716-446655440001',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts an event with both links null', () => {
+    expect(
+      createItineraryEventSchema.safeParse({
+        ...VALID_EVENT,
+        activityId: null,
+        reservationId: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects an event linked to both an activity and reservation', () => {
+    expect(
+      createItineraryEventSchema.safeParse({
+        ...VALID_EVENT,
+        activityId: '550e8400-e29b-41d4-a716-446655440000',
+        reservationId: '550e8400-e29b-41d4-a716-446655440001',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an invalid activity ID', () => {
+    expect(
+      createItineraryEventSchema.safeParse({
+        ...VALID_EVENT,
+        activityId: 'not-a-uuid',
+      }).success,
+    ).toBe(false);
+  });
+
   // ----- Coordinates -----
 
   it('accepts valid coordinates', () => {
@@ -331,5 +380,52 @@ describe('updateItineraryEventSchema', () => {
         timeZone: TIME_ZONE,
       }).success,
     ).toBe(true);
+  });
+    // ----- Activity and Reservation Links -----
+
+  it('accepts an activity link update', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        activityId: '550e8400-e29b-41d4-a716-446655440000',
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts a reservation link update', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        reservationId: '550e8400-e29b-41d4-a716-446655440001',
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts clearing an activity link', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        activityId: null,
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts clearing a reservation link', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        reservationId: null,
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects updating both links to non-null values', () => {
+    expect(
+      updateItineraryEventSchema.safeParse({
+        activityId: '550e8400-e29b-41d4-a716-446655440000',
+        reservationId: '550e8400-e29b-41d4-a716-446655440001',
+        timeZone: TIME_ZONE,
+      }).success,
+    ).toBe(false);
   });
 });

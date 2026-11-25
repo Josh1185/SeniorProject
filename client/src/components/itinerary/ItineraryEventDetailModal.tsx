@@ -113,6 +113,13 @@ export function ItineraryEventDetailModal({
         }
       >
         <DetailField label="Title">{event?.title}</DetailField>
+                <DetailField label="Linked to">
+          {event?.activity
+            ? `Activity: ${event.activity.name}`
+            : event?.reservation
+              ? `Reservation: ${event.reservation.name}`
+              : 'None'}
+        </DetailField>
         <DetailField label="Description" full>
           {event?.description}
         </DetailField>

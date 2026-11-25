@@ -9,7 +9,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // -------------------- Lib imports --------------------
-import { activityKeys } from '../../lib/queryKeys';
+import { activityKeys, itineraryKeys } from '../../lib/queryKeys';
+
 
 // -------------------- Service imports --------------------
 import { deleteActivity } from '../../services/activityService';
@@ -29,6 +30,10 @@ export function useDeleteActivity(tripId: string) {
       });
       void queryClient.invalidateQueries({
         queryKey: activityKeys.lists(tripId),
+      });
+      // Refresh itinerary event details after the linked activity is deleted.
+      void queryClient.invalidateQueries({
+        queryKey: itineraryKeys.details(tripId),
       });
     },
   });

@@ -122,6 +122,20 @@ export async function getItineraryEventById(req: Request, res: Response) {
       longitude: true,
       createdAt: true,
       updatedAt: true,
+      activityId: true,
+      reservationId: true,
+      activity: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      reservation: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
 
@@ -151,6 +165,42 @@ export async function createItineraryEvent(req: Request, res: Response) {
 
   // ----- 3. Validate the request body -----
 const body = createItineraryEventSchema.parse(req.body);
+
+// Validate that any linked activity belongs to this trip.
+if (body.activityId) {
+  const activity = await prisma.activity.findFirst({
+    where: {
+      id: body.activityId,
+      tripId,
+    },
+    select: { id: true },
+  });
+
+  if (!activity) {
+    return badRequest(
+      res,
+      'The selected activity does not belong to this trip.',
+    );
+  }
+}
+
+// Validate that any linked reservation belongs to this trip.
+if (body.reservationId) {
+  const reservation = await prisma.reservation.findFirst({
+    where: {
+      id: body.reservationId,
+      tripId,
+    },
+    select: { id: true },
+  });
+
+  if (!reservation) {
+    return badRequest(
+      res,
+      'The selected reservation does not belong to this trip.',
+    );
+  }
+}
 
 // ----- 4. Retrieve the trip's date range -----
 const trip = await prisma.trip.findUniqueOrThrow({
@@ -207,6 +257,8 @@ try {
       locationAddress: body.locationAddress,
       latitude: body.latitude,
       longitude: body.longitude,
+      activityId: body.activityId,
+      reservationId: body.reservationId,
     },
     select: {
       id: true,
@@ -268,6 +320,8 @@ export async function updateItineraryEvent(req: Request, res: Response) {
     select: {
       startDateTime: true,
       endDateTime: true,
+      activityId: true,
+      reservationId: true,
     },
   });
 
@@ -283,6 +337,42 @@ export async function updateItineraryEvent(req: Request, res: Response) {
   // ----- 6. Validate the request body -----
   const body = updateItineraryEventSchema.parse(req.body);
 
+  // Validate a newly selected activity belongs to this trip.
+if (body.activityId) {
+  const activity = await prisma.activity.findFirst({
+    where: {
+      id: body.activityId,
+      tripId,
+    },
+    select: { id: true },
+  });
+
+  if (!activity) {
+    return badRequest(
+      res,
+      'The selected activity does not belong to this trip.',
+    );
+  }
+}
+
+// Validate a newly selected reservation belongs to this trip.
+if (body.reservationId) {
+  const reservation = await prisma.reservation.findFirst({
+    where: {
+      id: body.reservationId,
+      tripId,
+    },
+    select: { id: true },
+  });
+
+  if (!reservation) {
+    return badRequest(
+      res,
+      'The selected reservation does not belong to this trip.',
+    );
+  }
+}
+
   // ----- 7. Calculate the resulting start and end times -----
   const startDateTime =
     body.startDateTime === undefined
@@ -296,6 +386,25 @@ export async function updateItineraryEvent(req: Request, res: Response) {
         ? null
         : new Date(body.endDateTime);
 
+        // Determine the resulting activity and reservation links.
+        let activityId = existingEvent.activityId;
+        let reservationId = existingEvent.reservationId;
+
+        if (body.activityId !== undefined) {
+          activityId = body.activityId;
+
+          if (body.activityId !== null) {
+            reservationId = null;
+          }
+        }
+
+        if (body.reservationId !== undefined) {
+          reservationId = body.reservationId;
+
+          if (body.reservationId !== null) {
+            activityId = null;
+          }
+        }
   // ----- 8. Validate timestamp ordering -----
   if (endDateTime !== null && endDateTime < startDateTime) {
     return badRequest(
@@ -353,6 +462,8 @@ export async function updateItineraryEvent(req: Request, res: Response) {
       locationAddress: body.locationAddress,
       latitude: body.latitude,
       longitude: body.longitude,
+      activityId,
+      reservationId,
     },
     select: {
       id: true,
